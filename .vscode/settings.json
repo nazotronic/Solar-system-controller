@@ -1,8 +1,22 @@
 {
+	"git.decorations.enabled": false,
 	"files.associations": {
 		"random": "cpp",
 		"istream": "cpp",
 		"ostream": "cpp",
-		"system_error": "cpp"
-	}
+		"system_error": "cpp",
+		"array": "cpp",
+		"deque": "cpp",
+		"list": "cpp",
+		"string": "cpp",
+		"vector": "cpp",
+		"iterator": "cpp",
+		"string_view": "cpp",
+		"*.tcc": "cpp",
+		"unordered_map": "cpp",
+		"memory": "cpp",
+		"initializer_list": "cpp",
+		"ranges": "cpp"
+	},
+	"cmake.sourceDirectory": "D:/projects/solar system/lib/Blynk"
 }

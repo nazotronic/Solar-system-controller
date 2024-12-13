@@ -74,7 +74,7 @@
 // настройка антидребезга энкодера, кнопки, таймаута удержания и таймаута двойного клика
 #define ENC_DEBOUNCE_TURN 0
 #define ENC_DEBOUNCE_BUTTON 80
-#define ENC_HOLD_TIMEOUT 700
+#define ENC_HOLD_TIMEOUT 900
 #define ENC_DOUBLE_TIMEOUT 300
 
 #if defined(__AVR__)
