@@ -35,22 +35,22 @@ void DisplayManager::tick() {
 		return;
 	}
 	
-	Screen* screen = getScreenFromStack();
-	if (screen == NULL) {
+	Window* window = getWindowFromStack();
+	if (window == NULL) {
 		return;
 	}
 
 	if (millis() - display_fps_timer >= 1000 / getFps()) {
 		display_fps_timer = millis();
 		
-		screen->print(getLcdManager(), this, getSystemManager());
+		window->print(getLcdManager(), this, getSystemManager());
 	}
 }
 
 void DisplayManager::makeDefault() {
 	system = NULL;
 	freeStack();
-	addScreenToStack(new MainScreen);
+	addWindowToStack(new MainWindow);
 
 	work_flag = true; ////////////
 	backlight_off_time = 10; //////////////////////
@@ -90,29 +90,29 @@ bool DisplayManager::action() {
 	return false;
 }
 
-void DisplayManager::addScreenToStack(Screen* screen) {
-	if (screen == NULL) {
+void DisplayManager::addWindowToStack(Window* window) {
+	if (window == NULL) {
 		return;
 	}
 
-	screen_list_node_t* new_node = new screen_list_node_t;
+	window_list_node_t* new_node = new window_list_node_t;
 
 	new_node->next = stack;
-	new_node->screen = screen;
+	new_node->window = window;
 
 	stack = new_node;
 }
 
-void DisplayManager::deleteScreenFromStack(Screen* screen) {
-	if (stack == NULL || screen == NULL) {
+void DisplayManager::deleteWindowFromStack(Window* window) {
+	if (stack == NULL || window == NULL) {
 		return;
 	}
 
-	if (stack->screen == screen) {
-		screen_list_node_t* node_to_delete = stack;
+	if (stack->window == window) {
+		window_list_node_t* node_to_delete = stack;
 		stack = stack->next;
 
-		free(node_to_delete->screen);
+		free(node_to_delete->window);
 		free(node_to_delete);
 	}
 }
@@ -144,8 +144,8 @@ LcdManager* DisplayManager::getLcdManager() {
 	return &lcd;
 }
 
-Screen* DisplayManager::getScreenFromStack() {
-	return (stack == NULL) ? NULL : stack->screen;
+Window* DisplayManager::getWindowFromStack() {
+	return (stack == NULL) ? NULL : stack->window;
 }
 
 
@@ -168,10 +168,10 @@ void DisplayManager::freeStack() {
 	}
 
 	do {
-		screen_list_node_t* node_to_delete = stack;
+		window_list_node_t* node_to_delete = stack;
 		stack = stack->next;
 
-		free(node_to_delete->screen);
+		free(node_to_delete->window);
 		free(node_to_delete);
 	} while (stack != NULL);
 }

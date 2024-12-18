@@ -9,7 +9,7 @@
 
 #include "data.h"
 
-void MainScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void MainWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	SolarSystemManager* solar = system->getSolarSystemManager();
 	Encoder* enc = system->getEncoder();
 
@@ -29,7 +29,7 @@ void MainScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->clear();
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 5);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 5);
 		
 		enc->isRight();
 	}
@@ -40,20 +40,20 @@ void MainScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 
 		switch (cursor) {
 		case 0:
-			display->addScreenToStack(new SettingsScreen);
+			display->addWindowToStack(new SettingsWindow);
 			break;
 		case 1:
-			display->addScreenToStack(new DS18B20SettingsDisplay);
+			display->addWindowToStack(new DS18B20SettingsDisplay);
 			break;
 		case 2:
-			display->addScreenToStack(new SolarSettingsDisplay);
+			display->addWindowToStack(new SolarSettingsDisplay);
 			break;
 		case 3:
 		case 4:
-			display->addScreenToStack(new NetworkSettingsScreen);
+			display->addWindowToStack(new NetworkSettingsWindow);
 			break;
 		case 5:
-			display->addScreenToStack(new BlynkSettingsScreen);
+			display->addWindowToStack(new BlynkSettingsWindow);
 			break;
 		}
 	}
@@ -66,7 +66,7 @@ void MainScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 	}
 }
 
-void MainScreen::printHome(LcdManager* lcd, SystemManager* system) {
+void MainWindow::printHome(LcdManager* lcd, SystemManager* system) {
 	TimeManager* time = system->getTimeManager();
 	ModuleManager* modules = system->getModuleManager();
 	SolarSystemManager* solar = system->getSolarSystemManager();
@@ -118,7 +118,7 @@ void MainScreen::printHome(LcdManager* lcd, SystemManager* system) {
 	lcd->easyPrint(15, 3, String(time->day()) + "." + time->month());
 }
 
-void MainScreen::printModules(LcdManager* lcd, SystemManager* system) {
+void MainWindow::printModules(LcdManager* lcd, SystemManager* system) {
 	ModuleManager* modules = system->getModuleManager();
 
 	for (uint8_t i = 0;i < 4;i++) {
@@ -139,7 +139,7 @@ void MainScreen::printModules(LcdManager* lcd, SystemManager* system) {
 	lcd->print("%");
 }
 
-void MainScreen::printSolar(LcdManager* lcd, SystemManager* system) {
+void MainWindow::printSolar(LcdManager* lcd, SystemManager* system) {
 	SolarSystemManager* solar = system->getSolarSystemManager();
 
 	for (byte i = 0;i < 3;i++) {
@@ -168,17 +168,17 @@ void MainScreen::printSolar(LcdManager* lcd, SystemManager* system) {
 		lcd->easyPrint(7, 2, "       ");
 	}
 
-	if (millis() - solar_screen_data.pointer_tick_timer >= SOLAR_TICK_POINTER_TIME) {
-		solar_screen_data.pointer_tick_timer = millis();
+	if (millis() - solar_window_data.pointer_tick_timer >= SOLAR_TICK_POINTER_TIME) {
+		solar_window_data.pointer_tick_timer = millis();
 
-		lcd->easyPrint(11 - solar_screen_data.pointer, 0, " ");
-		lcd->easyPrint(6 + solar_screen_data.pointer, 3, " ");
+		lcd->easyPrint(11 - solar_window_data.pointer, 0, " ");
+		lcd->easyPrint(6 + solar_window_data.pointer, 3, " ");
 
 		if (solar->getReleFlag()) {
-			solar_screen_data.pointer = (solar_screen_data.pointer == 5) ? 0 : solar_screen_data.pointer + 1;
+			solar_window_data.pointer = (solar_window_data.pointer == 5) ? 0 : solar_window_data.pointer + 1;
 			
-			lcd->easyPrint(11 - solar_screen_data.pointer, 0, "<");
-			lcd->easyPrint(6 + solar_screen_data.pointer, 3, ">");
+			lcd->easyPrint(11 - solar_window_data.pointer, 0, "<");
+			lcd->easyPrint(6 + solar_window_data.pointer, 3, ">");
 		}
 	}
 
@@ -201,7 +201,7 @@ void MainScreen::printSolar(LcdManager* lcd, SystemManager* system) {
 	}
 }
 
-void MainScreen::printWifi(LcdManager* lcd, SystemManager* system) {
+void MainWindow::printWifi(LcdManager* lcd, SystemManager* system) {
 	NetworkManager* network = system->getNetworkManager();
 	lcd->easyPrint(0, 0, "WiFi ");
 
@@ -250,7 +250,7 @@ void MainScreen::printWifi(LcdManager* lcd, SystemManager* system) {
 	}
 }
 
-void MainScreen::printBlynk(LcdManager* lcd, SystemManager* system) {
+void MainWindow::printBlynk(LcdManager* lcd, SystemManager* system) {
 	BlynkManager* blynk = system->getBlynkManager();
 
 	lcd->easyPrint(0, 0, "Blynk:");
@@ -263,7 +263,7 @@ void MainScreen::printBlynk(LcdManager* lcd, SystemManager* system) {
 	lcd->print(blynk->getStatus() ? "CONNECTED   " : "DISCONNECTED");
 }
 
-void MainScreen::printAp(LcdManager* lcd, SystemManager* system) {
+void MainWindow::printAp(LcdManager* lcd, SystemManager* system) {
 	NetworkManager* network = system->getNetworkManager();
 	lcd->easyPrint(0, 0, "AP ");
 
@@ -281,7 +281,7 @@ void MainScreen::printAp(LcdManager* lcd, SystemManager* system) {
 	}
 }
 
-void MainScreen::printDigit(LcdManager* lcd, uint8_t x, uint8_t y, uint8_t digit) {
+void MainWindow::printDigit(LcdManager* lcd, uint8_t x, uint8_t y, uint8_t digit) {
 	switch (digit) {
 	case 0:
 		lcd->setCursor(x, y);
@@ -392,7 +392,7 @@ void MainScreen::printDigit(LcdManager* lcd, uint8_t x, uint8_t y, uint8_t digit
 	}
 }
 
-void MainScreen::makeSymbols(LcdManager* lcd) {
+void MainWindow::makeSymbols(LcdManager* lcd) {
 	lcd->createChar(0, LT);
 	lcd->createChar(1, UB);
 	lcd->createChar(2, RT);
@@ -404,7 +404,7 @@ void MainScreen::makeSymbols(LcdManager* lcd) {
 }
 
 
-void SettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void SettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
 
 	if (print_title_flag) {
@@ -424,7 +424,7 @@ void SettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManag
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor, " ");
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 3);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 3);
 		
 		enc->isRight();
 	}
@@ -435,19 +435,19 @@ void SettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManag
 
 		switch (cursor) {
 		case 0:
-			display->addScreenToStack(new NetworkSettingsScreen);
+			display->addWindowToStack(new NetworkSettingsWindow);
 			break;
 
 		case 1:
-			display->addScreenToStack(new BlynkSettingsScreen);
+			display->addWindowToStack(new BlynkSettingsWindow);
 			break;
 		
 		case 2:
-			display->addScreenToStack(new SolarSettingsDisplay);
+			display->addWindowToStack(new SolarSettingsDisplay);
 			break;
 
 		case 3:
-			display->addScreenToStack(new SystemSettingsDisplay);
+			display->addWindowToStack(new SystemSettingsDisplay);
 			break;
 		}
 	}
@@ -456,12 +456,12 @@ void SettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManag
 		lcd->clear();
 
 		system->saveSettingsRequest();
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
 
-void NetworkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void NetworkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	NetworkManager* network = system->getNetworkManager();
 	Encoder* enc = system->getEncoder();
 
@@ -514,7 +514,7 @@ void NetworkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, Syst
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor, " ");
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 3);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 3);
 		
 		enc->isRight();
 	}
@@ -530,30 +530,30 @@ void NetworkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, Syst
 			break;
 		case 1:
 			lcd->clear();
-			display->addScreenToStack(new WifiSettingsScreen);
+			display->addWindowToStack(new WifiSettingsWindow);
 
 			break;
 		case 2:
 			{
-			KeyboardScreen* keyboard = new KeyboardScreen;
+			KeyboardWindow* keyboard = new KeyboardWindow;
 
 			strcat(ssid_ap, network->getApSsid());
 			keyboard->setString(ssid_ap, NETWORK_SSID_PASS_SIZE);
 
 			lcd->clear();
-			display->addScreenToStack(keyboard);
+			display->addWindowToStack(keyboard);
 			}
 
 			break;
 		case 3:
 			{
-			KeyboardScreen* keyboard = new KeyboardScreen;
+			KeyboardWindow* keyboard = new KeyboardWindow;
 
 			strcat(pass_ap, network->getApPass());
 			keyboard->setString(pass_ap, NETWORK_SSID_PASS_SIZE);
 
 			lcd->clear();
-			display->addScreenToStack(keyboard);
+			display->addWindowToStack(keyboard);
 			}
 
 			break;
@@ -563,12 +563,12 @@ void NetworkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, Syst
 		system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
 
-void WifiSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void WifiSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	NetworkManager* network = system->getNetworkManager();
 	Encoder* enc = system->getEncoder();
 
@@ -601,7 +601,7 @@ void WifiSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemM
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor, " ");
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 2);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 2);
 		
 		enc->isRight();
 	}
@@ -613,21 +613,21 @@ void WifiSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemM
 		switch (cursor) {
 		case 0:
 			{
-			WifiStationsScreen* wifi_stations = new WifiStationsScreen;
+			WifiStationsWindow* wifi_stations = new WifiStationsWindow;
 			wifi_stations->setString(ssid, NETWORK_SSID_PASS_SIZE);
 
 			// lcd->clear();
-			display->addScreenToStack(wifi_stations);			
+			display->addWindowToStack(wifi_stations);			
 			}
 
 			break;
 		case 1:
 			{
-			KeyboardScreen* keyboard = new KeyboardScreen;
+			KeyboardWindow* keyboard = new KeyboardWindow;
 			keyboard->setString(pass, NETWORK_SSID_PASS_SIZE);
 
 			// lcd->clear();
-			display->addScreenToStack(keyboard);			
+			display->addWindowToStack(keyboard);			
 			}
 
 			break;
@@ -653,7 +653,7 @@ void WifiSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemM
 				display->setWorkFlag(true);
 
 				if (connect_flag) {
-					display->deleteScreenFromStack(this);
+					display->deleteWindowFromStack(this);
 				}
 			}
 
@@ -664,12 +664,12 @@ void WifiSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemM
 		system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
 
-void BlynkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void BlynkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	BlynkManager* blynk = system->getBlynkManager();
 	Encoder* enc = system->getEncoder();
 
@@ -700,7 +700,7 @@ void BlynkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, System
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor, " ");
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 3);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 3);
 			
 		enc->isRight();
 	}
@@ -734,7 +734,7 @@ void BlynkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, System
 			break;
 		case 3:
 			lcd->clear();
-			display->addScreenToStack(new BlynkLinksSettingsScreen);
+			display->addWindowToStack(new BlynkLinksSettingsWindow);
 
 			break;
 		}
@@ -743,12 +743,12 @@ void BlynkSettingsScreen::print(LcdManager* lcd, DisplayManager* display, System
 		system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
 
-void BlynkLinksSettingsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	BlynkManager* blynk = system->getBlynkManager();
 	Encoder* enc = system->getEncoder();
 
@@ -785,7 +785,7 @@ void BlynkLinksSettingsScreen::print(LcdManager* lcd, DisplayManager* display, S
 		lcd->easyPrint(0, cursor % 4, " ");
 		lcd->easyPrint(6, cursor % 4, (cursor != blynk->getLinksCount()) ? " " : "");
 
-		if (screenCursorTick(cursor, enc->isLeft() ? -1 : 1, blynk->getLinksCount()) ) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, blynk->getLinksCount()) ) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -838,7 +838,7 @@ void BlynkLinksSettingsScreen::print(LcdManager* lcd, DisplayManager* display, S
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -900,7 +900,7 @@ void SolarSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syste
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 6)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 6)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -951,7 +951,7 @@ void SolarSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syste
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -997,7 +997,7 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 6)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 6)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1031,12 +1031,12 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 		switch(cursor) {
 		case 0:
 			lcd->clear();
-			display->addScreenToStack(new TimeSettingsDisplay);
+			display->addWindowToStack(new TimeSettingsDisplay);
 
 			break; 
 		case 1:
 			lcd->clear();
-			display->addScreenToStack(new DS18B20SettingsDisplay);
+			display->addWindowToStack(new DS18B20SettingsDisplay);
 
 			break;
 		case 2:
@@ -1054,7 +1054,7 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -1094,7 +1094,7 @@ void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, System
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor, " ");
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 2);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 2);
 		
 		enc->isRight();
 	}
@@ -1133,7 +1133,7 @@ void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, System
 				time_set_display->setTimeT(time_to_set);
 
 				lcd->clear();
-				display->addScreenToStack(time_set_display);
+				display->addWindowToStack(time_set_display);
 			}
 
 			break;
@@ -1144,7 +1144,7 @@ void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, System
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -1189,7 +1189,7 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (screenCursorTick(cursor, enc->isLeft() ? -1 : 1, modules->getDS18B20Count() - 1)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, modules->getDS18B20Count() - 1)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1207,13 +1207,13 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 		ds18b20_set_display->setDS18B20(ds18b20_to_set);
 
 		lcd->clear();
-		display->addScreenToStack(ds18b20_set_display);
+		display->addWindowToStack(ds18b20_set_display);
 	}
 	if (enc->isHolded()) {
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -1248,7 +1248,7 @@ void TimeSetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManag
 		
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(5 + (cursor % 3) * 3, 2, "  ");
-		screenCursorTick(cursor, enc->isLeft() ? -1 : 1, 5);
+		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 5);
 		
 		enc->isRight();
 	}
@@ -1285,7 +1285,7 @@ void TimeSetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManag
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -1373,21 +1373,21 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 		switch (cursor) {
 		case 1:
 			{
-			KeyboardScreen* keyboard = new KeyboardScreen;
+			KeyboardWindow* keyboard = new KeyboardWindow;
 			keyboard->setString(ds18b20->name, DS_NAME_SIZE);
 
 			lcd->clear();
-			display->addScreenToStack(keyboard);	
+			display->addWindowToStack(keyboard);	
 			}
 
 			break;
 		case 2:
 			{
-			DS18B20AddressScreen* ds18b20_address_set = new DS18B20AddressScreen;
+			DS18B20AddressWindow* ds18b20_address_set = new DS18B20AddressWindow;
 			ds18b20_address_set->setArray(ds18b20->address, DS_NAME_SIZE);
 
 			lcd->clear();
-			display->addScreenToStack(ds18b20_address_set);	
+			display->addWindowToStack(ds18b20_address_set);	
 			}
 
 			break;
@@ -1397,7 +1397,7 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 	  	system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 }
 
@@ -1406,7 +1406,7 @@ void DS18B20SetDisplay::setDS18B20(ds18b20_data_t* ds18b20) {
 }
 
 
-void DS18B20AddressScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	ModuleManager* modules = system->getModuleManager();
 	DallasTemperature* ds18b20_sensor = modules->getDallasTemperature();
 	Encoder* enc = system->getEncoder();
@@ -1470,7 +1470,7 @@ void DS18B20AddressScreen::print(LcdManager* lcd, DisplayManager* display, Syste
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (screenCursorTick(cursor, enc->isLeft() ? -1 : 1, ds18b20_count - 1)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, ds18b20_count - 1)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1484,7 +1484,7 @@ void DS18B20AddressScreen::print(LcdManager* lcd, DisplayManager* display, Syste
 		// system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 	if (enc->isHolded()) {
 		scan_flag = true;
@@ -1492,13 +1492,13 @@ void DS18B20AddressScreen::print(LcdManager* lcd, DisplayManager* display, Syste
 	}
 }
 
-void DS18B20AddressScreen::setArray(uint8_t* array, uint8_t size) {
+void DS18B20AddressWindow::setArray(uint8_t* array, uint8_t size) {
 	this->array = array;
 	this->size = size;
 }
 
 
-void WifiStationsScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void WifiStationsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
 
 	if (scan_flag) {
@@ -1535,7 +1535,7 @@ void WifiStationsScreen::print(LcdManager* lcd, DisplayManager* display, SystemM
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (screenCursorTick(cursor, enc->isLeft() ? -1 : 1, stations_count - 1)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, stations_count - 1)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1549,20 +1549,20 @@ void WifiStationsScreen::print(LcdManager* lcd, DisplayManager* display, SystemM
 		// system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
-		display->deleteScreenFromStack(this);
+		display->deleteWindowFromStack(this);
 	}
 	if (enc->isHolded()) {
 		scan_flag = true;
 	}
 }
 
-void WifiStationsScreen::setString(char* string, uint8_t size) {
+void WifiStationsWindow::setString(char* string, uint8_t size) {
 	this->string = string;
 	this->size = size;
 }
 
 
-void KeyboardScreen::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
 	string_size_now = strlen(string);
 	
@@ -1641,7 +1641,7 @@ void KeyboardScreen::print(LcdManager* lcd, DisplayManager* display, SystemManag
 			// system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 			lcd->clear();
 
-			display->deleteScreenFromStack(this);
+			display->deleteWindowFromStack(this);
 		}
 			
 		print_string_flag = true;
@@ -1652,7 +1652,7 @@ void KeyboardScreen::print(LcdManager* lcd, DisplayManager* display, SystemManag
 	}
 }
 
-void KeyboardScreen::setString(char* string, uint8_t size) {
+void KeyboardWindow::setString(char* string, uint8_t size) {
 	this->string = string;
 	this->size = size;
 }

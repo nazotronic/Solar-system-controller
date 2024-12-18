@@ -487,7 +487,7 @@ T1 smartIncr(T1& value, T2 incr_step, T3 min, T4 max) {
 }
 
 template <class T>
-bool screenCursorTick(T& cursor, int8_t direct, uint8_t cursor_max) {
+bool windowCursorTick(T& cursor, int8_t direct, uint8_t cursor_max) {
 	if (direct < 0) {
 		smartIncr(cursor, -1, 0, cursor_max);
 

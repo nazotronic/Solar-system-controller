@@ -29,10 +29,10 @@ public:
 };
 
 
-class Screen;
-struct screen_list_node_t {
-	Screen* screen;
-	screen_list_node_t* next;		
+class Window;
+struct window_list_node_t {
+	Window* window;
+	window_list_node_t* next;		
 };
 
 
@@ -48,8 +48,8 @@ public:
 	void addBlynkElements(BlynkManager* blynk);
 
 	bool action();
-	void addScreenToStack(Screen* screen);
-	void deleteScreenFromStack(Screen* screen);
+	void addWindowToStack(Window* window);
+	void deleteWindowFromStack(Window* window);
 
 	void setSystemManager(SystemManager* system);
 
@@ -59,7 +59,7 @@ public:
 
 	SystemManager* getSystemManager();
 	LcdManager* getLcdManager();
-	Screen* getScreenFromStack();
+	Window* getWindowFromStack();
 
 	bool getWorkFlag();
 	uint8_t getBacklightOffTime();
@@ -71,7 +71,7 @@ private:
 	SystemManager* system;
 	LcdManager lcd;
 
-	screen_list_node_t* stack;
+	window_list_node_t* stack;
 
 	bool work_flag;
 	uint8_t backlight_off_time;
@@ -83,12 +83,12 @@ private:
 };
 
 
-class Screen {
+class Window {
 public:
 	virtual void print(LcdManager* lcd, DisplayManager* display, SystemManager* system) = 0;
 };
 
-class MainScreen : public Screen {
+class MainWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -103,17 +103,17 @@ private:
 	void printDigit(LcdManager* lcd, uint8_t x, uint8_t y, uint8_t digit);
 	void makeSymbols(LcdManager* lcd);
 
-	struct solar_screen_data_t {
+	struct solar_window_data_t {
 		uint8_t pointer = 0;
 		uint32_t pointer_tick_timer = 0;
 
-	} solar_screen_data;
+	} solar_window_data;
 
 	bool create_symbol_flag = true;
 	uint8_t cursor = 0;
 };
 
-class SettingsScreen : public Screen {
+class SettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -124,7 +124,7 @@ private:
 
 };
 
-class NetworkSettingsScreen : public Screen {
+class NetworkSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -137,7 +137,7 @@ private:
 	char pass_ap[NETWORK_SSID_PASS_SIZE] = "";
 };
 
-class WifiSettingsScreen : public Screen {
+class WifiSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -151,7 +151,7 @@ private:
 	char pass[NETWORK_SSID_PASS_SIZE] = "";
 };
 
-class BlynkSettingsScreen : public Screen {
+class BlynkSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -162,7 +162,7 @@ private:
 
 };
 
-class BlynkLinksSettingsScreen : public Screen {
+class BlynkLinksSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -173,7 +173,7 @@ private:
 	uint8_t cursor = 0;
 };
 
-class SolarSettingsDisplay : public Screen {
+class SolarSettingsDisplay : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -183,7 +183,7 @@ private:
 	uint8_t cursor = 0;
 };
 
-class SystemSettingsDisplay : public Screen {
+class SystemSettingsDisplay : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -193,7 +193,7 @@ private:
 	uint8_t cursor = 0;
 };
 
-class TimeSettingsDisplay : public Screen {
+class TimeSettingsDisplay : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -205,7 +205,7 @@ private:
 	TimeT* time_to_set = NULL;
 };
 
-class DS18B20SettingsDisplay : public Screen {
+class DS18B20SettingsDisplay : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -218,7 +218,7 @@ private:
 	ds18b20_data_t* ds18b20_to_set = NULL;
 };
 
-class TimeSetDisplay : public Screen {
+class TimeSetDisplay : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setTimeT(TimeT* time);
@@ -231,7 +231,7 @@ private:
 	TimeT* time = NULL;
 };
 
-class DS18B20SetDisplay : public Screen {
+class DS18B20SetDisplay : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setDS18B20(ds18b20_data_t* ds18b20);
@@ -245,7 +245,7 @@ private:
 	ds18b20_data_t* ds18b20 = NULL;
 };
 
-class DS18B20AddressScreen : public Screen {
+class DS18B20AddressWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setArray(uint8_t* array, uint8_t size);
@@ -262,7 +262,7 @@ private:
 
 };
 
-class WifiStationsScreen : public Screen {
+class WifiStationsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setString(char* string, uint8_t size);
@@ -278,7 +278,7 @@ private:
 
 };
 
-class KeyboardScreen : public Screen {
+class KeyboardWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setString(char* string, uint8_t size);
