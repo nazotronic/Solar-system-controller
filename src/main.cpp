@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"

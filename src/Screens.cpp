@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -471,11 +471,6 @@ void NetworkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, Syst
 		*ssid_ap = '\0';
 		*pass_ap = '\0';
 	}
-
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "Network");
-	}
 	
 	if (print_flag) {
 		print_flag = false;
@@ -579,11 +574,6 @@ void WifiSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 		strcat(pass, network->getWifiPass());
 	}
 
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "WiFi");
-	}
-
 	if (print_flag) {
 		print_flag = false;
 
@@ -673,12 +663,6 @@ void BlynkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, System
 	BlynkManager* blynk = system->getBlynkManager();
 	Encoder* enc = system->getEncoder();
 
-	if (print_title_flag) {
-		print_title_flag = false;
-		
-		lcd->printTitle(1, "Blynk menu");
-	}
-
 	if (print_flag) {
 		print_flag = false;
 
@@ -692,7 +676,7 @@ void BlynkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, System
 
 		lcd->easyPrint(1, 2, "Auth [");
 		lcd->print((*blynk->getAuth()) ? "SET" : "UNSET");
-		lcd->print("] ");
+		lcd->print("]");
 
 		lcd->easyPrint(1, 3, "Links         [ok]");
 	}
@@ -751,12 +735,6 @@ void BlynkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, System
 void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	BlynkManager* blynk = system->getBlynkManager();
 	Encoder* enc = system->getEncoder();
-
-	if (print_title_flag) {
-		print_title_flag = false;
-
-		lcd->printTitle(1, "Blynk links");
-	}
 
 	if (print_flag) {
 		print_flag = false;
@@ -847,11 +825,6 @@ void SolarSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syste
 	SolarSystemManager* solar = system->getSolarSystemManager();
 	ModuleManager* modules = system->getModuleManager();
 	Encoder* enc = system->getEncoder();
-	
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "Solar");
-	}
 
 	if (print_flag) {
 		print_flag = false;
@@ -960,11 +933,6 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 	ModuleManager* modules = system->getModuleManager();
 	Encoder* enc = system->getEncoder();
 
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "System");
-	}
-
 	if (print_flag) {
 		print_flag = false;
 
@@ -978,16 +946,20 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 			lcd->print("]");
 		}
 
-		if (cursor / 4 == 1) {
-			lcd->easyPrint(1, 0, "Time display [");
+		else if (cursor / 4 == 1) {
+			lcd->easyPrint(1, 0, "Auto reset [");
+			lcd->print(display->getAutoResetFlag() ? "ON" : "OFF");
+			lcd->print("]");
+
+			lcd->easyPrint(1, 1, "Time display [");
 			lcd->print(display->getBacklightOffTime());
 			lcd->print("]");
 
-			lcd->easyPrint(1, 1, "Display fps [");
+			lcd->easyPrint(1, 2, "Display fps [");
 			lcd->print(display->getFps());
 			lcd->print("]");
 
-			lcd->easyPrint(1, 2, "Buzzer [");
+			lcd->easyPrint(1, 3, "Buzzer [");
 			lcd->print(system->getBuzzerFlag() ? "ON" : "OFF");
 			lcd->print("]");
 		}
@@ -997,7 +969,7 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 6)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 7)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1013,10 +985,11 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 		case 3:
 			modules->setReadDataTime(modules->getReadDataTime() + (enc->isLeftH() ? -1 : 1));
 			break;
-		case 4:
+			
+		case 5:
 			display->setBacklightOffTime(display->getBacklightOffTime() + (enc->isLeftH() ? -1 : 1));
 			break;
-		case 5:
+		case 6:
 			display->setFps(display->getFps() + (enc->isLeftH() ? -1 : 1));
 			break;
 		}
@@ -1042,7 +1015,13 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 		case 2:
 			system->resetAll();
 			break;
-		case 6:
+
+		case 4:
+			lcd->clearLine(cursor % 4);
+			display->setAutoResetFlag(!display->getAutoResetFlag());
+
+			break;
+		case 7:
 			lcd->clearLine(cursor % 4);
 			system->setBuzzerFlag(!system->getBuzzerFlag());
 
@@ -1070,21 +1049,16 @@ void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, System
 		time_to_set = NULL;
 	}
 
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "Time");
-	}
-
 	if (print_flag) {
 		print_flag = false;
 
 		lcd->easyPrint(1, 0, "Ntp sync [");
 		lcd->print(time->getNtpFlag() ? "ON" : "OFF");
-		lcd->print("] ");
+		lcd->print("]");
 
 		lcd->easyPrint(1, 1, "Gmt [");
 		lcd->print(time->getGmt());
-		lcd->print("] ");
+		lcd->print("]");
 		
 		lcd->easyPrint(1, 2, "Time          ");
 		lcd->print(time->getNtpFlag() ? "    " : "[OK]");
@@ -1165,11 +1139,6 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 		print_flag = true;
 	}
 
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "DS18B20");
-	}
-
 	if (print_flag) {
 		print_flag = false;
 
@@ -1220,13 +1189,6 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 
 void TimeSetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
-
-	if (print_title_flag) {
-		print_title_flag = false;
-
-		lcd->printTitle(1, "Set time");
-		lcd->createChar(0, down_symbol);
-	}
 	
 	if (print_flag) {
 		print_flag = false;
@@ -1304,51 +1266,57 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 		print_flag = true;
 	}
 
-	if (print_title_flag) {
-		print_title_flag = false;
-		lcd->printTitle(1, "Set DS18B20");
-	}
-
 	if (print_flag) {
 		print_flag = false;
+		
+		if (!(cursor / 4)) {
+			ds18b20_sensor->requestTemperaturesByAddress(ds18b20->address);
+			float t = ds18b20_sensor->getTempC(ds18b20->address);
 
-		ds18b20_sensor->requestTemperaturesByAddress(ds18b20->address);
-		float t = ds18b20_sensor->getTempC(ds18b20->address);
+			lcd->easyPrint(1, 0, ds18b20->name);
 
-		lcd->easyPrint(1, 0, ds18b20->name);
-
-		lcd->setCursor(8, 0);
-		if (ds18b20->address != NULL) {
-			lcd->print(t);
-			lcd->write(223);
-		}
-		else {
-			lcd->print("ERR");
-		}
-
-		lcd->easyPrint(1, 1, "Name [");
-		lcd->print(ds18b20->name);
-		lcd->print("] ");
-
-		lcd->easyPrint(1, 2, "Addr [");
-		for (uint8_t i = 0;i < 3;i++) {
-			lcd->print(ds18b20->address[i], HEX);
-					
-			if (i != 2) {
-				lcd->print("-");
+			lcd->setCursor(8, 0);
+			if (ds18b20->address != NULL) {
+				lcd->print(t);
+				lcd->write(223);
 			}
-		}
-		lcd->print("] ");
+			else {
+				lcd->print("ERR");
+			}
 
-		lcd->easyPrint(1, 3, "Correction [");
-		lcd->print(ds18b20->correction);
-		lcd->print("] ");
+			lcd->easyPrint(1, 1, "Name [");
+			lcd->print(ds18b20->name);
+			lcd->print("]");
+
+			lcd->easyPrint(1, 2, "Addr [");
+			for (uint8_t i = 0;i < 3;i++) {
+				lcd->print(ds18b20->address[i], HEX);
+						
+				if (i != 2) {
+					lcd->print("-");
+				}
+			}
+			lcd->print("]");
+
+			lcd->easyPrint(1, 3, "Correction [");
+			lcd->print(ds18b20->correction);
+			lcd->print("]");
+		}
+		else if (cursor / 4 == 1) {
+			lcd->easyPrint(1, 0, "Read attempts [");
+			lcd->print(ds18b20->read_attempts);
+			lcd->print("]");
+		}
 	}
-	lcd->easyPrint(0, cursor, ">");
+	lcd->easyPrint(0, cursor % 4, ">");
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
-		lcd->easyPrint(0, cursor, " ");
-		smartIncr(cursor, enc->isLeft() ? -1 : 1, 1, 3);
+		lcd->easyPrint(0, cursor % 4, " ");
+
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 4)) {
+			print_flag = true;
+			lcd->clear();
+		}
 		
 		enc->isRight();
 	}
@@ -1360,6 +1328,9 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 		switch (cursor) {
 		case 3:
 			smartIncr(ds18b20->correction, enc->isLeftH() ? -0.1 : 0.1, -20, 20);
+			break;
+		case 4:
+			smartIncr(ds18b20->read_attempts, enc->isLeftH() ? -1 : 1, 0, 5);
 			break;
 		}
 
@@ -1481,7 +1452,6 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 	if (enc->isClick()) {
 		ds18b20_sensor->getAddress(array, cursor);
 
-		// system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
 		display->deleteWindowFromStack(this);
@@ -1546,7 +1516,6 @@ void WifiStationsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 	if (enc->isClick()) {
 		strcpy(string, WiFi.SSID(cursor).c_str());
 
-		// system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 		lcd->clear();
 
 		display->deleteWindowFromStack(this);
@@ -1638,7 +1607,6 @@ void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 			}
 		}
 		else if (key_cursor == 39) {
-			// system->buzzer(SCREEN_EXIT_BUZZER_FREQ, SCREEN_EXIT_BUZZER_TIME);
 			lcd->clear();
 
 			display->deleteWindowFromStack(this);

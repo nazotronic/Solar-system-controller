@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -60,9 +60,12 @@ void NetworkManager::uiBuild() {
 		update_codes += "SMDSc";
 		update_codes += i;
 		update_codes += ",";
+		update_codes += "SMDSra";
+		update_codes += i;
+		update_codes += ",";
 	}
 
-	update_codes += "SDbot,SDf,SSSs,SSSeo,SSSri,SSSd,SSSba,SSSbo,SSSex,SSb";
+	update_codes += "SDar,SDbot,SDf,SSSs,SSSeo,SSSri,SSSd,SSSba,SSSbo,SSSex,SSb";
 	
 	GP.BUILD_BEGIN(550);
 	GP.THEME(GP_DARK);
@@ -74,7 +77,7 @@ void NetworkManager::uiBuild() {
 
 	if (ui.uri("/")) {
 		M_SPOILER("Info", GP_ORANGE,
-			GP.SYSTEM_INFO("1.1.0");
+			GP.SYSTEM_INFO("1.2.0");
 		);
 		
 		M_BLOCK(GP_THIN,
@@ -158,8 +161,8 @@ void NetworkManager::uiBuild() {
 		GP.HR();
 		GP.SPAN("Solar Battery Control System", GP_LEFT);
 		GP.SPAN("Author: Vereshchynskyi Nazar", GP_LEFT);
-		GP.SPAN("Version: 1.1.0", GP_LEFT);
-		GP.SPAN("Date: 12.12.2024", GP_LEFT);
+		GP.SPAN("Version: 1.2.0", GP_LEFT);
+		GP.SPAN("Date: 27.12.2024", GP_LEFT);
 	}
 
 	if (ui.uri("/settings")) {
@@ -238,9 +241,11 @@ void NetworkManager::uiBuild() {
 				GP.LABEL("Gmt:");
 				GP.NUMBER("STg", "gmt", time->getGmt(), "25%");
 			);
-				
-			GP.TIME("STt", GPtime((uint32_t)time->getUnix(), time->getGmt()) );
-			GP.DATE("STd", GPdate((uint32_t)time->getUnix(), time->getGmt()) );
+			
+			if (!time->getNtpFlag()) {
+				GP.TIME("STt", GPtime((uint32_t)time->getUnix(), time->getGmt()) );
+				GP.DATE("STd", GPdate((uint32_t)time->getUnix(), time->getGmt()) );
+			}
 		);
 		GP.BREAK();
 		
@@ -260,6 +265,8 @@ void NetworkManager::uiBuild() {
 						GP.LABEL(":");
 						GP.NUMBER_F(String("SMDSc") + i, "", modules->getDS18B20Correction(i), 2, "25%");
 						GP.PLAIN("°");
+						GP.NUMBER(String("SMDSra") + i, "", modules->getDS18B20ReadAttempts(i), "25%");
+						GP.PLAIN("✔");
 					);
 				}
 			);
@@ -267,6 +274,10 @@ void NetworkManager::uiBuild() {
 		GP.BREAK();
 
 		M_SPOILER("Display", GP_ORANGE,
+			M_BOX(GP_LEFT,
+				GP.LABEL("Auto reset:");
+				GP.SWITCH("SDar", display->getAutoResetFlag());
+			);
 			M_BOX(GP_LEFT,
 				GP.LABEL("Backlight off time:");
 				GP.NUMBER("SDbot", "time", display->getBacklightOffTime(), "25%");
@@ -446,11 +457,19 @@ void NetworkManager::uiAction() {
 		if (ui.update(String("SMDSn") + i)) {
 			ui.answer(modules->getDS18B20Name(i));
 		}
+
 		if (ui.update(String("SMDSc") + i)) {
 			ui.answer(modules->getDS18B20Correction(i), 1);
 		}
+
+		if (ui.update(String("SMDSra") + i)) {
+			ui.answer(modules->getDS18B20ReadAttempts(i));
+		}
 	}
 
+	if (ui.update("SDar")) {
+		ui.answer(display->getAutoResetFlag());
+	}
 	if (ui.update("SDbot")) {
 		ui.answer(display->getBacklightOffTime());
 	}
@@ -560,8 +579,15 @@ void NetworkManager::uiAction() {
 		if (ui.click(String("SMDSc") + i)) {
 			modules->setDS18B20Correction(i, ui.getFloat());
 		}
+
+		if (ui.click(String("SMDSra") + i)) {
+			modules->setDS18B20ReadAttempts(i, ui.getInt());
+		}
 	}
 	
+	if (ui.click("SDar")) {
+		display->setBacklightOffTime(ui.getBool());
+	}
 	if (ui.click("SDbot")) {
 		display->setBacklightOffTime(ui.getInt());
 	}

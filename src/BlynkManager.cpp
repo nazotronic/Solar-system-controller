@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -180,7 +180,7 @@ void BlynkManager::setWorkFlag(bool work_flag) {
 }
 
 void BlynkManager::setSendDataTime(uint8_t time) {
-	send_data_time = time;
+	send_data_time = constrain(time, 0, 100);
 }
 
 void BlynkManager::setAuth(String auth) {

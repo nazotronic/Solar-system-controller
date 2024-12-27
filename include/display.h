@@ -3,16 +3,23 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #pragma once
 
 /* --- Macroces --- */
-#define SOLAR_TICK_POINTER_TIME 500 // mls
+/* DisplayManager */
+#define DISPLAY_AUTO_RESET_TIME 30 // min
+
+/* WindowSettings */
 #define SCREEN_EXIT_BUZZER_FREQ 200
 #define SCREEN_EXIT_BUZZER_TIME 300 // mls
+
+
+/* MainWindow */
+#define SOLAR_TICK_POINTER_TIME 500 // mls
 
 
 class LcdManager : public LiquidCrystal_I2C {
@@ -54,6 +61,7 @@ public:
 	void setSystemManager(SystemManager* system);
 
 	void setWorkFlag(bool work_flag);
+	void setAutoResetFlag(bool auto_reset_flag);
 	void setBacklightOffTime(uint8_t time);
 	void setFps(uint8_t fps);
 
@@ -62,6 +70,7 @@ public:
 	Window* getWindowFromStack();
 
 	bool getWorkFlag();
+	bool getAutoResetFlag();
 	uint8_t getBacklightOffTime();
 	uint8_t getFps();
 
@@ -74,11 +83,13 @@ private:
 	window_list_node_t* stack;
 
 	bool work_flag;
+	bool auto_reset_flag;
 	uint8_t backlight_off_time;
-	uint8_t display_fps;
+	uint8_t fps;
 
+	uint32_t auto_reset_timer;
 	uint32_t backlight_off_timer;
-	uint32_t display_fps_timer;
+	uint32_t fps_timer;
 	bool backlight_flag;
 };
 
@@ -129,7 +140,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
@@ -143,7 +153,7 @@ public:
 
 private:
 	bool initialization_flag = true;
-	bool print_title_flag = true;
+	
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
@@ -156,7 +166,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
@@ -167,7 +176,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	bool value_cursor = 0;
 	uint8_t cursor = 0;
@@ -178,7 +186,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 };
@@ -188,7 +195,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 };
@@ -198,7 +204,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
@@ -210,7 +215,6 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 	uint32_t update_timer = 0;
@@ -224,7 +228,6 @@ public:
 	void setTimeT(TimeT* time);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
@@ -237,7 +240,6 @@ public:
 	void setDS18B20(ds18b20_data_t* ds18b20);
 
 private:
-	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 1;
 	uint32_t update_timer = 0;

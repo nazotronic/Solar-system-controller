@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -20,7 +20,7 @@ void TimeManager::begin() {
 
 void TimeManager::tick() {
 	if (ntp_flag) {
-		if (millis() - ntp_sync_timer >= MIN_TO_MLS(NTP_SYNC_TIME) || !ntp_sync_timer) {
+		if (!ntp_sync_timer || millis() - ntp_sync_timer >= MIN_TO_MLS(NTP_SYNC_TIME)) {
 			NetworkManager* network = system->getNetworkManager();
 			
 			if (network->ntpSync(this)) {
@@ -39,8 +39,8 @@ void TimeManager::makeDefault() {
 }
 
 void TimeManager::writeSettings(char* buffer) {
-	setParameter(buffer, "STns", ntp_flag);
-	setParameter(buffer, "STg", gmt);
+	setParameter(buffer, "STns", getNtpFlag());
+	setParameter(buffer, "STg", getGmt());
 }
 
 void TimeManager::readSettings(char* buffer) {
@@ -97,7 +97,7 @@ void TimeManager::setNtpFlag(bool ntp_flag) {
 }
 
 void TimeManager::setGmt(int8_t gmt) {
-	this->gmt = gmt;
+	this->gmt = constrain(gmt, -12, 12);
 }
 
 void TimeManager::setTime(TimeT* time) {

@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -92,7 +92,7 @@ void NetworkManager::tick() {
 
 	if (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
 		if (getStatus() != WL_CONNECTED) {
-			if (millis() - wifi_reconnect_timer >= SEC_TO_MLS(NETWORK_RECONNECT_TIME) || !wifi_reconnect_timer) {
+			if (!wifi_reconnect_timer || millis() - wifi_reconnect_timer >= SEC_TO_MLS(NETWORK_RECONNECT_TIME)) {
 				wifi_reconnect_timer = millis();
 
 				connect();
@@ -100,16 +100,15 @@ void NetworkManager::tick() {
 		}
 	}
 
-
 	ui.tick();
 }
 
 void NetworkManager::writeSettings(char* buffer) {
-	setParameter(buffer, "SNm", mode);
-	setParameter(buffer, "SNWs", (const char*) ssid_sta);
-	setParameter(buffer, "SNWp", (const char*) pass_sta);
-	setParameter(buffer, "SNAs", (const char*) ssid_ap);
-	setParameter(buffer, "SNAp", (const char*) pass_ap);
+	setParameter(buffer, "SNm", getMode());
+	setParameter(buffer, "SNWs", (const char*) getWifiSsid());
+	setParameter(buffer, "SNWp", (const char*) getWifiPass());
+	setParameter(buffer, "SNAs", (const char*) getApSsid());
+	setParameter(buffer, "SNAp", (const char*) getApPass());
 }
 
 void NetworkManager::readSettings(char* buffer) {
@@ -139,7 +138,7 @@ bool NetworkManager::connect(String ssid, String pass, uint8_t connect_time, boo
    		WiFi.mode(WIFI_STA);
 		WiFi.begin(ssid, pass);
 
-		while (millis() - connect_timer < SEC_TO_MLS(connect_time) && connect_time) {
+		while (connect_time && millis() - connect_timer < SEC_TO_MLS(connect_time)) {
 			if (getStatus() == WL_CONNECTED) {
 				connect_status = true;
 				break;
@@ -181,7 +180,7 @@ bool NetworkManager::ntpSync(TimeManager* time) {
 	static uint32_t last_send_timer;
 
 	if (getStatus() == WL_CONNECTED) {
-		if (millis() - last_send_timer >= SEC_TO_MLS(UDP_RESEND_TIME) || !last_send_timer) {
+		if (!last_send_timer || millis() - last_send_timer >= SEC_TO_MLS(UDP_RESEND_TIME)) {
 			last_send_timer = millis();
 
 			packet[0] = 0b11100011;  // LI, Version, Mode

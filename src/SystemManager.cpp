@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -20,9 +20,7 @@ void SystemManager::begin() {
 	moduls.begin();
 	solar.begin();
 	display.begin();
-	network.begin();
-	
-	solar.setReleFlag(false);
+	network.begin();  
 
 	pinMode(BUZZER_PORT, OUTPUT);
 	pinMode(SW_PORT, INPUT_PULLUP);
@@ -48,7 +46,7 @@ void SystemManager::tick() {
 
   	yield();
 	enc.tick();
-  
+	
 	if (enc.isTurn() || enc.isPress()) {
 		if (display.action()) {
 			enc.resetStates();
@@ -173,7 +171,7 @@ void SystemManager::saveSettings(bool ignore_flag) {
 	File file = LittleFS.open("/config.nztr", "w");
 	char buffer[SETTINGS_BUFFER_SIZE + 1] = "";
 
-	setParameter(buffer, "SSb", buzzer_flag);
+	setParameter(buffer, "SSb", getBuzzerFlag());
 
 	time.writeSettings(buffer);
 	moduls.writeSettings(buffer);

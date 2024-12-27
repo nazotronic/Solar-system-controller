@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  * 
  * Features:
  * 1. Supports reading up to 4 ds18b20 temperature sensors with calibration capability.
@@ -42,37 +42,56 @@
 #define RELE_PORT D0
 
 /* --- Defaults --- */
+/* SystemManager */
 #define DEFAULT_BUZZER_FLAG true
 
+/* TimeManager */
 #define DEFAULT_NTP_FLAG true
 #define DEFAULT_GMT 0
 
+/* ModuleManager */
 #define DEFAULT_READ_DATA_TIME 5 // sec
+#define DEFAULT_READ_ATTEMPTS 1
 
+/* SolarSystemManager */
 #define DEFAULT_SOLAR_WORK_FLAG true
 #define DEFAULT_SOLAR_ERROR_ON_FLAG true
 #define DEFAULT_SOLAR_RELE_INVERT_FLAG true
 #define DEFAULT_SOLAR_DELTA 5
 
+/* DisplayManager */
+#define DEFAULT_DISPLAY_WORK_FLAG true
+#define DEFAULT_DISPLAY_AUTO_RESET_FLAG true
+#define DEFAULT_DISPLAY_BACKLIGHT_OFF_TIME 10 // sec
+#define DEFAULT_DISPLAY_FPS 10
+
+/* NetworkManager */
 #define DEFAULT_NETWORK_MODE NETWORK_AUTO
 #define DEFAULT_NETWORK_SSID_AP "nztr_solar"
 #define DEFAULT_NETWORK_PASS_AP "nazotronic"
 #define DEFAULT_BLYNK_WORK_STATUS true
 
+/* BlynkManager */
 #define DEFAULT_BLYNK_SEND_DATA_TIME DEFAULT_READ_DATA_TIME // sec
 
 /* --- Macroces --- */
+/* SystemManager */
 #define SAVE_SETTINGS_TIME 5 // sec
-#define SETTINGS_BUFFER_SIZE 900
+#define SETTINGS_BUFFER_SIZE 1000
 
+/* TimeManager */
 #define NTP_SYNC_TIME 1 // min
 
+/* ModuleManager */
+#define UNSPECIFIED_STATUS 255
 #define DS_SENSORS_COUNT 4
 #define DS_NAME_SIZE 3
 
+/* SolarSystemManager */
 #define SOLAR_DELTA_MIN 3
 #define SOLAR_DELTA_MAX 10
 
+/* NetworkManager */
 #define NETWORK_OFF 0
 #define NETWORK_STA 1
 #define NETWORK_AP_STA 2
@@ -85,8 +104,9 @@
 #define NTP_PORT 123
 
 #define WEB_REBUILD_TIME 500 // mls
-#define WEB_UPDATE_TIME 3 // sec
+#define WEB_UPDATE_TIME 5 // sec
 
+/* BlynkManager */
 #define BLYNK_TYPE_UINT8_T 0
 #define BLYNK_TYPE_INT8_T 1
 #define BLYNK_TYPE_UINT32_T 2
@@ -120,6 +140,7 @@ struct ds18b20_data_t {
 	char name[DS_NAME_SIZE];
 	uint8_t address[8];
 	float correction;
+	uint8_t read_attempts;
 	
 	float t;
 	uint8_t status;
@@ -204,6 +225,7 @@ public:
 	void setDS18B20Name(uint8_t index, String name);
 	void setDS18B20Address(uint8_t index, uint8_t* address);
 	void setDS18B20Correction(uint8_t index, float correction);
+	void setDS18B20ReadAttempts(uint8_t index, uint8_t read_attempts);
 
 	DallasTemperature* getDallasTemperature();
 	uint8_t getReadDataTime();
@@ -217,11 +239,13 @@ public:
 	char* getDS18B20Name(uint8_t index);
 	uint8_t* getDS18B20Address(uint8_t index);
 	float getDS18B20Correction(uint8_t index);
+	uint8_t getDS18B20ReadAttempts(uint8_t index);
 	float getDS18B20T(uint8_t index);
 	uint8_t getDS18B20Status(uint8_t index);
 
 private:
 	void updateModuleData();
+	bool isCorrectIndex(uint8_t index);
 
 	AM2320 am2320_sensor;
 	OneWire oneWire;

@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.1.0
- * Date: 12.12.2024
+ * Version: 1.2.0
+ * Date: 27.12.2024
  */
 
 #include "data.h"
@@ -24,7 +24,7 @@ void ModuleManager::begin() {
 
 void ModuleManager::tick() {
 	if (getReadDataTime()) {
-		if (millis() - read_data_timer >= SEC_TO_MLS(getReadDataTime()) || !read_data_timer) {
+		if (!read_data_timer || millis() - read_data_timer >= SEC_TO_MLS(getReadDataTime())) {
 			read_data_timer = millis();
 			updateModuleData();
 		}
@@ -32,14 +32,16 @@ void ModuleManager::tick() {
 }
 
 void ModuleManager::makeDefault() {
-	am2320_data.status = 255;
+	am2320_data.status = UNSPECIFIED_STATUS;
 
 	memset(&am2320_data, 0, sizeof(am2320_data_t));
 	memset(&ds18b20_data, 0, sizeof(ds18b20_data_t));
 
 	for (uint8_t i = 0;i < getDS18B20Count();i++) {
 		sprintf(ds18b20_data[i].name, "T%d", i + 1);
-		ds18b20_data[i].status = 255;
+	
+		ds18b20_data[i].read_attempts = DEFAULT_READ_ATTEMPTS;
+		ds18b20_data[i].status = UNSPECIFIED_STATUS;
 	}
 
 	read_data_time = DEFAULT_READ_DATA_TIME;
@@ -53,6 +55,7 @@ void ModuleManager::writeSettings(char* buffer) {
 		setParameter(buffer, String("SMDSn") + i, (const char*) getDS18B20Name(i));
 		setParameter(buffer, String("SMDSa") + i, getDS18B20Address(i), 8);
 		setParameter(buffer, String("SMDSc") + i, getDS18B20Correction(i));
+		setParameter(buffer, String("SMDSra") + i, getDS18B20ReadAttempts(i));
   	}
 }
 
@@ -63,6 +66,7 @@ void ModuleManager::readSettings(char* buffer) {
 		getParameter(buffer, String("SMDSn") + i, ds18b20_data[i].name, 3);
 		getParameter(buffer, String("SMDSa") + i, ds18b20_data[i].address, 8);
 		getParameter(buffer, String("SMDSc") + i, &ds18b20_data[i].correction);
+		getParameter(buffer, String("SMDSra") + i, &ds18b20_data[i].read_attempts);
   	}
 }
 
@@ -79,7 +83,7 @@ void ModuleManager::addBlynkElements(BlynkManager* blynk) {
 
 
 void ModuleManager::setReadDataTime(uint8_t time) {
-	read_data_time = time;
+	read_data_time = constrain(time, 0, 100);
 }
 
 
@@ -91,10 +95,11 @@ void ModuleManager::setDS18B20(uint8_t index, ds18b20_data_t* ds18b20) {
 	setDS18B20Name(index, ds18b20->name);
 	setDS18B20Address(index, ds18b20->address);
 	setDS18B20Correction(index, ds18b20->correction);
+	setDS18B20ReadAttempts(index, ds18b20->read_attempts);
 }
 
 void ModuleManager::setDS18B20Name(uint8_t index, String name) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 	
@@ -102,7 +107,7 @@ void ModuleManager::setDS18B20Name(uint8_t index, String name) {
 }
 
 void ModuleManager::setDS18B20Address(uint8_t index, uint8_t* address) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 
@@ -110,11 +115,19 @@ void ModuleManager::setDS18B20Address(uint8_t index, uint8_t* address) {
 }
 
 void ModuleManager::setDS18B20Correction(uint8_t index, float correction) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 
-	ds18b20_data[index].correction = correction;
+	ds18b20_data[index].correction = constrain(correction, -20.0, 20.0);
+}
+
+void ModuleManager::setDS18B20ReadAttempts(uint8_t index, uint8_t read_attempts) {
+	if (!isCorrectIndex(index)) {
+		return;
+	}
+
+	ds18b20_data[index].read_attempts = constrain(read_attempts, 0, 5);
 }
 
 
@@ -145,7 +158,7 @@ uint8_t ModuleManager::getDS18B20Count() {
 }
 
 ds18b20_data_t* ModuleManager::getDS18B20(uint8_t index) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return NULL;
 	}
 
@@ -153,7 +166,7 @@ ds18b20_data_t* ModuleManager::getDS18B20(uint8_t index) {
 }
 
 char* ModuleManager::getDS18B20Name(uint8_t index) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return NULL;
 	}
 
@@ -161,7 +174,7 @@ char* ModuleManager::getDS18B20Name(uint8_t index) {
 }
 
 uint8_t* ModuleManager::getDS18B20Address(uint8_t index) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return NULL;
 	}
 
@@ -169,15 +182,23 @@ uint8_t* ModuleManager::getDS18B20Address(uint8_t index) {
 }
 
 float ModuleManager::getDS18B20Correction(uint8_t index) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return 0;
 	}
 
 	return ds18b20_data[index].correction;
 }
 
+uint8_t ModuleManager::getDS18B20ReadAttempts(uint8_t index) {
+	if (!isCorrectIndex(index)) {
+		return 0;
+	}
+
+	return ds18b20_data[index].read_attempts;
+}
+
 float ModuleManager::getDS18B20T(uint8_t index) {
-	if (index >= getDS18B20Count()) {
+	if (!isCorrectIndex(index)) {
 		return 0;
 	}
 
@@ -185,8 +206,8 @@ float ModuleManager::getDS18B20T(uint8_t index) {
 }
 
 uint8_t ModuleManager::getDS18B20Status(uint8_t index) {
-	if (index >= getDS18B20Count()) {
-		return 255;
+	if (!isCorrectIndex(index)) {
+		return UNSPECIFIED_STATUS;
 	}
 
 	return ds18b20_data[index].status;
@@ -196,19 +217,37 @@ uint8_t ModuleManager::getDS18B20Status(uint8_t index) {
 void ModuleManager::updateModuleData() {
 	am2320_data.status = am2320_sensor.read(&am2320_data.t, &am2320_data.h);
 
-	ds18b20_sensor.requestTemperatures();
-	
 	for (uint8_t i = 0;i < getDS18B20Count();i++) {
-		ds18b20_data[i].t = ds18b20_sensor.getTempC(getDS18B20Address(i));
+		uint8_t attempts = ds18b20_data[i].read_attempts;
 
-		if (getDS18B20T(i) < -100) {
-			ds18b20_data[i].status = 1;
+		if (!attempts) {
+			ds18b20_data[i].status = UNSPECIFIED_STATUS;
 		}
-		else if (getDS18B20T(i) == 85) {
-			ds18b20_data[i].status = 2;
-		}
-		else {
-			ds18b20_data[i].status = 0;
+
+		while (attempts) {
+			attempts--;
+
+			ds18b20_sensor.requestTemperaturesByAddress(getDS18B20Address(i));
+			ds18b20_data[i].t = ds18b20_sensor.getTempC(getDS18B20Address(i));
+
+			if (getDS18B20T(i) < -100) {
+				ds18b20_data[i].status = 1;
+			}
+			else if (getDS18B20T(i) == 85) {
+				ds18b20_data[i].status = 2;
+			}
+			else {
+				ds18b20_data[i].status = 0;
+				break;
+			}
 		}
 	}
+}
+
+bool ModuleManager::isCorrectIndex(uint8_t index) {
+	if (index >= getDS18B20Count()) {
+		return false;
+	}
+
+	return true;
 }
