@@ -3,19 +3,14 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  */
 
 #include "data.h"
 
 BlynkManager::BlynkManager() {
 	makeDefault();
-}
-
-BlynkManager::~BlynkManager() {
-	free(elements);
-	free(links);
 }
 
 
@@ -35,25 +30,18 @@ void BlynkManager::tick() {
 			}
 		}
 	}
-
+	
 	Blynk.run();
 }
 
 void BlynkManager::makeDefault() {
-	free(elements);
-	free(links);
-
-	elements = NULL;
-	links = NULL;
+	links.~DynamicArray();
 
 	work_flag = DEFAULT_BLYNK_WORK_STATUS;
 	send_data_time = DEFAULT_BLYNK_SEND_DATA_TIME;
 	memset(auth, 0, BLYNK_AUTH_SIZE);
 
 	send_data_timer = 0;
-	elements_count = 0;
-	links_count = 0;
-
 }
 
 void BlynkManager::writeSettings(char* buffer) {
@@ -61,28 +49,37 @@ void BlynkManager::writeSettings(char* buffer) {
 	setParameter(buffer, "SBsdt", getSendDataTime());
 	setParameter(buffer, "SBa", (const char*) getAuth());
 
-	for (uint8_t i = 0;i < getLinksCount();i++) {
-		uint8_t element_index = getLinkElement(i);
+	for (uint8_t i = 0;i < links.getSize();i++) {
+		blynk_element_t* element = getLinkElement(i);
 
 		setParameter(buffer, String("SBLp") + i, getLinkPort(i));
-		setParameter(buffer, String("SBLe") + i, (const char*) getElementCode(element_index));
+		setParameter(buffer, String("SBLe") + i, (const char*) element->code);
 	}
 }
 
 void BlynkManager::readSettings(char* buffer) {
+	DynamicArray<blynk_element_t> elements;
 	uint8_t link_index = 0;
-	uint8_t link_port = 0;
+	
 	char element_code[BLYNK_ELEMENT_CODE_SIZE] = "";
+	uint8_t link_port = 0;
+
+	system->makeBlynkElementsList(&elements);
 
 	getParameter(buffer, "SBs", &work_flag);
 	getParameter(buffer, "SBsdt", &send_data_time);
 	getParameter(buffer, "SBa", auth, BLYNK_AUTH_SIZE);
 
-	while (getParameter(buffer, String("SBLp") + link_index, &link_port)) {
-		if (getParameter(buffer, String("SBLe") + link_index, element_code, 10)) {
+	while (getParameter(buffer, String("SBLe") + link_index, element_code, BLYNK_ELEMENT_CODE_SIZE)) {
+		int8_t el_index = system->scanBlynkElemetIndex(&elements, element_code);
+
+		if (el_index >= 0) {
 			if (addLink()) {
-				setLinkPort(link_index, link_port);
-				setLinkElement(link_index, element_code);
+				setLinkElement(link_index, &elements[el_index]);
+
+				if (getParameter(buffer, String("SBLp") + link_index, &link_port)) {
+					setLinkPort(link_index, link_port);
+				}
 			}
 		}
 
@@ -93,78 +90,36 @@ void BlynkManager::readSettings(char* buffer) {
 }
 
 
-bool BlynkManager::addElement(const char* name, String code, void* pointer, uint8_t type) {
-	if (name == NULL || pointer == NULL) {
-		return false;
-	}
-
-	for (uint8_t i = 0;i < getElementsCount();i++) {
-		if (!strcmp(getElementName(i), name) || !strcmp(getElementCode(i), code.c_str()) || getElementPointer(i) == pointer) {
-			return false;
-		}
-	}
-
-	if (!(getElementsCount() % 10)) {
-		blynk_element_t* new_pointer = (blynk_element_t*) realloc(elements, (getElementsCount() + 10) * sizeof(blynk_element_t));
-		
-		if (new_pointer == NULL) {
-			return false;
-		}
-
-		elements = new_pointer;
-	}
-
-	elements[elements_count].name = name;
-	strcpy(elements[elements_count].code, code.c_str());
-	elements[elements_count].pointer = pointer;
-	elements[elements_count].type = type;
-
-	elements_count++;
-	return true;
-}
-
 bool BlynkManager::addLink() {
-	if (elements == NULL) {
-		return false;
+	if (links.add()) {
+		links[links.getSize() - 1].port = links.getSize() - 1;
+
+		return true;
 	}
 
-	if (!(getLinksCount() % 10)) {
-		blynk_link_t* new_pointer = (blynk_link_t*) realloc(links, (getLinksCount() + 10) * sizeof(blynk_link_t));
-		
-		if (new_pointer == NULL) {
-			return false;
-		}
-
-		links = new_pointer;
-	}
-
-	links[links_count].port = links_count;
-	links[links_count].element_index = 0;
-	
-	links_count++;
-	return true;
+	return false;
 }
 
-bool BlynkManager::delLink(uint8_t index) {
-	if (index >= getLinksCount() || links == NULL) {
+bool BlynkManager::deleteLink(uint8_t index) {
+	if (links.del(index)) {
+		return true;
+	}
+
+	return false;
+}
+
+bool BlynkManager::deleteLink(String element_code) {
+	return deleteLink(scanLinkIndex(element_code));
+}
+
+bool BlynkManager::modifyLinkElementCode(String previous_code, String new_code) {
+	uint8_t link_index = scanLinkIndex(previous_code);
+
+	if (link_index < 0) {
 		return false;
 	}
 
-	while (index < getLinksCount() - 1) {
-		links[index] = links[index + 1];
-
-		index++;
-	}
-	
-	links_count--;
-	if (!(getLinksCount() % 10)) {
-		links = (blynk_link_t*) realloc(links, getLinksCount() * sizeof(blynk_link_t));
-		
-		if (!links_count) {
-			free(links);
-			links = NULL;
-		}
-	}
+	strcpy(links[link_index].element.code, new_code.c_str());
 
 	return true;
 }
@@ -197,33 +152,20 @@ void BlynkManager::setAuth(String auth) {
 }
 
 
-void BlynkManager::setLinkPort(uint8_t link_index, uint8_t port) {
-	if (link_index >= getLinksCount() || links == NULL) {
+void BlynkManager::setLinkPort(uint8_t index, uint8_t port) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 
-	links[link_index].port = port;
+	links[index].port = port;
 }
 
-void BlynkManager::setLinkElement(uint8_t link_index, uint8_t element_index) {
-	if (link_index >= getLinksCount() || links == NULL || element_index >= getElementsCount()) {
+void BlynkManager::setLinkElement(uint8_t index, blynk_element_t* element) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 
-	links[link_index].element_index = element_index;
-}
-void BlynkManager::setLinkElement(uint8_t index, const char* element_code) {
-	if (index >= getLinksCount() || links == NULL || element_code == NULL) {
-		return;
-	}
-
-	for (uint8_t i = 0;i < getElementsCount();i++) {
-		if (!strcmp(getElementCode(i), element_code)) {
-			links[index].element_index = i;
-
-			return;
-		}
-	}
+	memcpy(&links[index].element, element, sizeof(blynk_element_t));
 }
 
 
@@ -250,92 +192,105 @@ char* BlynkManager::getAuth() {
 
 
 uint8_t BlynkManager::getLinksCount() {
-	return links_count;
+	return links.getSize();
 }
 
-uint8_t BlynkManager::getLinkPort(uint8_t link_index) {
-	if (link_index >= getLinksCount() || links == NULL) {
+uint8_t BlynkManager::getLinkPort(uint8_t index) {
+	if (!isCorrectIndex(index)) {
 		return 0;
 	}
 
-	return links[link_index].port;
-}
-
-uint8_t BlynkManager::getLinkElement(uint8_t link_index) {
-	if (link_index >= getLinksCount() || links == NULL) {
-		return 0;
-	}
-
-	return links[link_index].element_index;
+	return links[index].port;
 }
 
 
-uint8_t BlynkManager::getElementsCount() {
-	return elements_count;
-}
-
-const char* BlynkManager::getElementName(uint8_t el_index) {
-	if (el_index >= getElementsCount() || elements == NULL) {
+blynk_element_t* BlynkManager::getLinkElement(uint8_t index) {
+	if (!isCorrectIndex(index)) {
 		return NULL;
 	}
 
-	return elements[el_index].name;
+	return &links[index].element;
 }
 
-char* BlynkManager::getElementCode(uint8_t el_index) {
-	if (el_index >= getElementsCount() || elements == NULL) {
+const char* BlynkManager::getLinkElementName(uint8_t index) {
+	if (!isCorrectIndex(index)) {
 		return NULL;
 	}
 
-	return elements[el_index].code;
+	return links[index].element.name;
 }
 
-void* BlynkManager::getElementPointer(uint8_t el_index) {
-	if (el_index >= getElementsCount() || elements == NULL) {
+char* BlynkManager::getLinkElementCode(uint8_t index) {
+	if (!isCorrectIndex(index)) {
 		return NULL;
 	}
 
-	return elements[el_index].pointer;
+	return links[index].element.code;
 }
 
-uint8_t BlynkManager::getElementType(uint8_t el_index) {
-	if (el_index >= getElementsCount() || elements == NULL) {
-		return 0;
+void* BlynkManager::getLinkElementPointer(uint8_t index) {
+	if (!isCorrectIndex(index)) {
+		return NULL;
 	}
 
-	return elements[el_index].type;
+	return links[index].element.pointer;
+}
+
+uint8_t BlynkManager::getLinkElementType(uint8_t index) {
+	if (!isCorrectIndex(index)) {
+		return BLYNK_TYPE_UINT8_T;
+	}
+
+	return links[index].element.type;
 }
 
 
-void BlynkManager::sendData(uint8_t link_index) {
-	uint8_t element_index = getLinkElement(link_index);
+bool BlynkManager::isCorrectIndex(uint8_t index) {
+	if (index >= getLinksCount()) {
+		return false;
+	}
 
-	if (link_index >= getLinksCount() || links == NULL) {
+	return true;
+}
+
+int8_t BlynkManager::scanLinkIndex(String element_code) {
+	if (!links.getSize()) {
+		return -1;
+	}
+
+	for (uint8_t i = 0; i < links.getSize();i++) {
+		if (!strcmp(links[i].element.code, element_code.c_str()) ) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+
+void BlynkManager::sendData(uint8_t index) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 
-	if (getElementPointer(element_index) == NULL) {
-		return;
-	}
-
-	switch (getElementType(element_index)) {
+	switch (getLinkElementType(index)) {
 	case BLYNK_TYPE_UINT8_T:
-		Blynk.virtualWrite(getLinkPort(link_index), *(uint8_t *)getElementPointer(element_index));
+		Blynk.virtualWrite(getLinkPort(index), *(uint8_t *)getLinkElementPointer(index));
 		break;
 	case BLYNK_TYPE_INT8_T:
-		Blynk.virtualWrite(getLinkPort(link_index), *(int8_t *)getElementPointer(element_index));
+		Blynk.virtualWrite(getLinkPort(index), *(int8_t *)getLinkElementPointer(index));
 		break;
 	case BLYNK_TYPE_UINT32_T:
-		Blynk.virtualWrite(getLinkPort(link_index), *(uint32_t *)getElementPointer(element_index));
+		Blynk.virtualWrite(getLinkPort(index), *(uint32_t *)getLinkElementPointer(index));
 		break;
 	case BLYNK_TYPE_INT32_T:
-		Blynk.virtualWrite(getLinkPort(link_index), *(int32_t *)getElementPointer(element_index));
+		Blynk.virtualWrite(getLinkPort(index), *(int32_t *)getLinkElementPointer(index));
 		break;
 	case BLYNK_TYPE_BOOL:
-		Blynk.virtualWrite(getLinkPort(link_index), *(bool *)getElementPointer(element_index));
+		Blynk.virtualWrite(getLinkPort(index), *(bool *)getLinkElementPointer(index));
 		break;
 	case BLYNK_TYPE_FLOAT:
-		Blynk.virtualWrite(getLinkPort(link_index), *(float *)getElementPointer(element_index));
+		Blynk.virtualWrite(getLinkPort(index), *(float *)getLinkElementPointer(index));
 		break;
 	}
 }
@@ -345,45 +300,43 @@ BLYNK_WRITE_DEFAULT() {
 	BlynkManager* blynk = systemManager.getBlynkManager();
 
 	for (uint8_t i = 0;i < blynk->getLinksCount();i++) {
-		uint8_t element_index = blynk->getLinkElement(i);
-
 		if (blynk->getLinkPort(i) == request.pin) {
-			switch (blynk->getElementType(element_index)) {
-			case BLYNK_TYPE_UINT8_T:
-			case BLYNK_TYPE_INT8_T:
-			case BLYNK_TYPE_UINT32_T:
-			case BLYNK_TYPE_INT32_T:
-			case BLYNK_TYPE_BOOL:  blynk->setElementValue(element_index, param.asInt()); break;
-			case BLYNK_TYPE_FLOAT: blynk->setElementValue(element_index, param.asFloat()); break;
+			switch (blynk->getLinkElementType(i)) {
+				case BLYNK_TYPE_UINT8_T:
+				case BLYNK_TYPE_INT8_T:
+				case BLYNK_TYPE_UINT32_T:
+				case BLYNK_TYPE_INT32_T:
+				case BLYNK_TYPE_BOOL:  blynk->setLinkElementValue(i, param.asInt()); break;
+				case BLYNK_TYPE_FLOAT: blynk->setLinkElementValue(i, param.asFloat()); break;
 			}
 		}
 	}
 }
 
 template <class T>
-void BlynkManager::setElementValue(uint8_t index, T value) {
-	if (index >= getElementsCount() || elements == NULL) {
+void BlynkManager::setLinkElementValue(uint8_t index, T value) {
+	if (!isCorrectIndex(index)) {
 		return;
 	}
 
-	switch (getElementType(index)) {
+	switch (getLinkElementType(index)) {
 	case BLYNK_TYPE_UINT8_T:
-		*(uint8_t *)getElementPointer(index) = value;
+		*(uint8_t *)getLinkElementPointer(index) = value;
 		break;
 	case BLYNK_TYPE_INT8_T:
-		*(int8_t *)getElementPointer(index) = value;
+		*(int8_t *)getLinkElementPointer(index) = value;
 		break;
 	case BLYNK_TYPE_UINT32_T:
-		*(uint32_t *)getElementPointer(index) = value;
+		*(uint32_t *)getLinkElementPointer(index) = value;
 		break;
 	case BLYNK_TYPE_INT32_T:
-		*(int32_t *)getElementPointer(index) = value;
+		*(int32_t *)getLinkElementPointer(index) = value;
 		break;
 	case BLYNK_TYPE_BOOL:
-		*(bool *)getElementPointer(index) = value;
+		*(bool *)getLinkElementPointer(index) = value;
 		break;
 	case BLYNK_TYPE_FLOAT:
-		*(float *)getElementPointer(index) = value;
+		*(float *)getLinkElementPointer(index) = value;
 		break;
 	}
 }

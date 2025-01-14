@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  */
 
 #include "data.h"
@@ -23,9 +23,8 @@ void NetworkManager::begin() {
 
 
 void NetworkManager::makeDefault() {
-	system = NULL;
-
 	mode = DEFAULT_NETWORK_MODE;
+	
 	reset_request = true;
 	tick_allow = true;
 	wifi_reconnect_timer = 0;

@@ -3,11 +3,11 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  * 
  * Features:
- * 1. Supports reading up to 4 ds18b20 temperature sensors with calibration capability.
+ * 1. Supports reading up to 10 ds18b20 temperature sensors with calibration capability.
  * 2. Supports AM2320 sensor for temperature and humidity display.
  * 3. Easy and convenient functionality.
  * 4. Supports WiFi, access point, and can operate in automatic mode which enables the access point if no WiFi is available.
@@ -22,6 +22,7 @@
 #include <AM2320.h>
 #include <Clock.h>
 #include <settings.h>
+#include <DynamicArray.h>
 #include <LittleFS.h>
 #include <GyverEncoder.h>
 #include <LiquidCrystal_I2C.h> 
@@ -46,20 +47,25 @@
 #define DEFAULT_BUZZER_FLAG true
 
 /* TimeManager */
+#define TIME_MANAGER_BLYNK_SUPPORT
 #define DEFAULT_NTP_FLAG true
 #define DEFAULT_GMT 0
 
 /* ModuleManager */
+#define MODULE_MANAGER_BLYNK_SUPPORT
 #define DEFAULT_READ_DATA_TIME 5 // sec
+#define DEFAULT_DS18B20_NAME "Tn"
 #define DEFAULT_READ_ATTEMPTS 1
 
 /* SolarSystemManager */
+#define SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
 #define DEFAULT_SOLAR_WORK_FLAG true
 #define DEFAULT_SOLAR_ERROR_ON_FLAG true
 #define DEFAULT_SOLAR_RELE_INVERT_FLAG true
 #define DEFAULT_SOLAR_DELTA 5
 
 /* DisplayManager */
+#define DISPLAY_SYSTEM_MANAGER_BLYNK_SUPPORT
 #define DEFAULT_DISPLAY_WORK_FLAG true
 #define DEFAULT_DISPLAY_AUTO_RESET_FLAG true
 #define DEFAULT_DISPLAY_BACKLIGHT_OFF_TIME 10 // sec
@@ -77,14 +83,14 @@
 /* --- Macroces --- */
 /* SystemManager */
 #define SAVE_SETTINGS_TIME 5 // sec
-#define SETTINGS_BUFFER_SIZE 1000
+#define SETTINGS_BUFFER_SIZE 1100
 
 /* TimeManager */
 #define NTP_SYNC_TIME 1 // min
 
 /* ModuleManager */
 #define UNSPECIFIED_STATUS 255
-#define DS_SENSORS_COUNT 4
+#define DS_SENSORS_MAX_COUNT 10
 #define DS_NAME_SIZE 3
 
 /* SolarSystemManager */
@@ -104,7 +110,7 @@
 #define NTP_PORT 123
 
 #define WEB_REBUILD_TIME 500 // mls
-#define WEB_UPDATE_TIME 5 // sec
+#define WEB_UPDATE_TIME 10 // sec
 
 /* BlynkManager */
 #define BLYNK_TYPE_UINT8_T 0
@@ -140,13 +146,20 @@ struct ds18b20_data_t {
 	char name[DS_NAME_SIZE];
 	uint8_t address[8];
 	float correction;
-	uint8_t read_attempts;
 	
 	float t;
 	uint8_t status;
 };
 
 struct blynk_element_t {
+	blynk_element_t(const char* name, String code, void* pointer, uint8_t type) {
+		this->name = name;
+		this->pointer = pointer;
+		this->type = type;
+		
+		strcpy(this->code, code.c_str());
+	}
+
 	const char* name;
 	char code[BLYNK_ELEMENT_CODE_SIZE];
 	void* pointer;
@@ -155,7 +168,7 @@ struct blynk_element_t {
 
 struct blynk_link_t {
 	uint8_t port;
-	uint8_t element_index;
+	blynk_element_t element;
 };
 
 class NetworkManager;
@@ -171,7 +184,9 @@ public:
 	void makeDefault();
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
-	void addBlynkElements(BlynkManager* blynk);
+#ifdef TIME_MANAGER_BLYNK_SUPPORT
+	void addBlynkElements(DynamicArray<blynk_element_t>* array);
+#endif
 
 	uint8_t status();
 	uint8_t hour();
@@ -217,15 +232,26 @@ public:
 	void makeDefault();
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
-	void addBlynkElements(BlynkManager* blynk);
+#ifdef MODULE_MANAGER_BLYNK_SUPPORT
+	void addBlynkElements(DynamicArray<blynk_element_t>* array);
+#endif
 
+	bool addDS18B20();
+	bool deleteDS18B20(uint8_t index);
+	uint8_t scanDS18B20Count();
+	float scanDS18B20TByAddress(uint8_t* address);
+	
+	uint8_t makeDS18B20AddressList(String* string_pointer);
+	uint8_t makeDS18B20AddressList(DynamicArray<uint8_t[8]>* array, DynamicArray<float>* t_array = NULL);
+	int8_t scanDS18B20AddressIndex(DynamicArray<uint8_t[8]>* array, uint8_t* address);
+	
+	void setSystemManager(SystemManager* system);
 	void setReadDataTime(uint8_t time);
 
 	void setDS18B20(uint8_t index, ds18b20_data_t* ds18b20);
 	void setDS18B20Name(uint8_t index, String name);
 	void setDS18B20Address(uint8_t index, uint8_t* address);
 	void setDS18B20Correction(uint8_t index, float correction);
-	void setDS18B20ReadAttempts(uint8_t index, uint8_t read_attempts);
 
 	DallasTemperature* getDallasTemperature();
 	uint8_t getReadDataTime();
@@ -239,17 +265,20 @@ public:
 	char* getDS18B20Name(uint8_t index);
 	uint8_t* getDS18B20Address(uint8_t index);
 	float getDS18B20Correction(uint8_t index);
-	uint8_t getDS18B20ReadAttempts(uint8_t index);
 	float getDS18B20T(uint8_t index);
 	uint8_t getDS18B20Status(uint8_t index);
 
 private:
-	void updateModuleData();
 	bool isCorrectIndex(uint8_t index);
+	void updateModuleData();
+	void DS18B20AddressToString(uint8_t* address, String* string);
 
 	AM2320 am2320_sensor;
 	OneWire oneWire;
 	DallasTemperature ds18b20_sensor;
+	SystemManager* system;
+
+	uint8_t read_data_time;
 
 	struct am2320_data_t {
 		float t;
@@ -257,10 +286,8 @@ private:
 		uint8_t status;
 
 	} am2320_data;
+	DynamicArray<ds18b20_data_t> ds18b20_data;
 
-	ds18b20_data_t ds18b20_data[DS_SENSORS_COUNT];
-
-	uint8_t read_data_time;
 	uint32_t read_data_timer;
 };
 
@@ -273,7 +300,9 @@ public:
 	void makeDefault();
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
-	void addBlynkElements(BlynkManager* blynk);
+#ifdef SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
+	void addBlynkElements(DynamicArray<blynk_element_t>* array);
+#endif
 
 	void setSystemManager(SystemManager* system);
 
@@ -283,10 +312,10 @@ public:
 	void setReleInvertFlag(bool rele_invert_flag);
 	void setDelta(uint8_t delta);
 
-	void setSensor(uint8_t solar_sensor, int8_t ds_sensor_index);
-	void setBatterySensor(int8_t ds_sensor_index);
-	void setBoilerSensor(int8_t ds_sensor_index);
-	void setExitSensor(int8_t ds_sensor_index);
+	void setSensor(uint8_t solar_sensor, int8_t ds18b20_index);
+	void setBatterySensor(int8_t ds18b20_index);
+	void setBoilerSensor(int8_t ds18b20_index);
+	void setExitSensor(int8_t ds18b20_index);
 
 	SystemManager* getSystemManager();
 	uint8_t getStatus();
@@ -339,6 +368,9 @@ public:
 	void makeDefault();
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
+#ifdef NETWORK_MANAGER_BLYNK_SUPPORT
+	void addBlynkElements(DynamicArray<blynk_element_t>* array);
+#endif
 	
 	bool connect(String ssid = String(""), String pass = String(""), uint8_t connect_time = 0, bool auto_save = false);
 	void off();
@@ -367,35 +399,57 @@ public:
 	char* getApPass();
 
 private:
-	static SystemManager* system;
-	WiFiUDP udp;
-	static GyverPortal ui;
+	/* --- functions --- */
+	static void updateWebModulesBlock();
+	static void updateWebBlynkBlock();
+
+	/* --- settings --- */
+	uint8_t mode;
 
 	char ssid_sta[NETWORK_SSID_PASS_SIZE];
 	char pass_sta[NETWORK_SSID_PASS_SIZE];
 	char ssid_ap[NETWORK_SSID_PASS_SIZE];
 	char pass_ap[NETWORK_SSID_PASS_SIZE];
 
-	uint8_t mode;
+	/* --- classes --- */
+	static SystemManager* system;
+	WiFiUDP udp;
+	static GyverPortal ui;
 
+	/* --- structures --- */
+	struct web_modules_block_t {
+		String ds18b20_address_array_string;
+		DynamicArray<uint8_t[8]> ds18b20_address_array;
+	};
+
+	struct web_blynk_block_t {
+		DynamicArray<blynk_element_t> elements;
+	};
+
+	/* --- variables --- */
 	bool reset_request;
 	bool tick_allow;
 	uint32_t wifi_reconnect_timer;
+
+	/* --- web variables --- */
+	static web_modules_block_t web_modules;
+	static web_blynk_block_t web_blynk;
+
 };
 
 class BlynkManager {
 public:
 	BlynkManager();
-	~BlynkManager();
 	
 	void tick();
 	void makeDefault();
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
 
-	bool addElement(const char* name, String code, void* pointer, uint8_t type);
 	bool addLink();
-	bool delLink(uint8_t index);
+	bool deleteLink(uint8_t index);
+	bool deleteLink(String element_code);
+	bool modifyLinkElementCode(String previous_code, String new_code);
 
 	void setSystemManager(SystemManager* system);
 
@@ -403,9 +457,8 @@ public:
 	void setSendDataTime(uint8_t time);
 	void setAuth(String auth);
 	
-	void setLinkPort(uint8_t link_index, uint8_t port);
-	void setLinkElement(uint8_t link_index, uint8_t element_index);
-	void setLinkElement(uint8_t link_index, const char* element_code);
+	void setLinkPort(uint8_t index, uint8_t port);
+	void setLinkElement(uint8_t index, blynk_element_t* element);
 	
 	SystemManager* getSystemManager();
 	bool getStatus();
@@ -415,20 +468,23 @@ public:
 	char* getAuth();
 
 	uint8_t getLinksCount();
-	uint8_t getLinkPort(uint8_t link_index);
-	uint8_t getLinkElement(uint8_t link_index);
+	uint8_t getLinkPort(uint8_t index);
+	
+	blynk_element_t* getLinkElement(uint8_t index);
+	const char* getLinkElementName(uint8_t index);
+	char* getLinkElementCode(uint8_t index);
+	void* getLinkElementPointer(uint8_t index);
+	uint8_t getLinkElementType(uint8_t index);
 
-	uint8_t getElementsCount();
-	const char* getElementName(uint8_t el_index);
-	char* getElementCode(uint8_t el_index);
-	void* getElementPointer(uint8_t el_index);
-	uint8_t getElementType(uint8_t el_index);
 
 private:
-	void sendData(uint8_t link_index);
+	bool isCorrectIndex(uint8_t index);
+	int8_t scanLinkIndex(String element_code);
+
+	void sendData(uint8_t index);
 	friend BLYNK_WRITE_DEFAULT();
 	template <class T>
-	void setElementValue(uint8_t index, T value);
+	void setLinkElementValue(uint8_t index, T value);
 
 	SystemManager* system;
 	static WiFiClient _blynkWifiClient;
@@ -439,12 +495,8 @@ private:
 	uint8_t send_data_time;
 	char auth[BLYNK_AUTH_SIZE];
 
+	DynamicArray<blynk_link_t> links;
 	uint32_t send_data_timer;
-	uint8_t elements_count;
-	uint8_t links_count;
-
-	blynk_element_t* elements;
-	blynk_link_t* links;
 };
 
 class SystemManager {
@@ -457,8 +509,15 @@ public:
 	void reset();
 	void resetAll();
 
-	void buzzer(uint16_t freq, uint16_t duration);
+	void makeBlynkElementsList(DynamicArray<blynk_element_t>* array);
+	int8_t scanBlynkElemetIndex(DynamicArray<blynk_element_t>* array, blynk_element_t* element);
+	int8_t scanBlynkElemetIndex(DynamicArray<blynk_element_t>* array, String element_code);
+
+	bool deleteBlynkLink(String element_code);
+	bool modifyBlynkLinkElementCode(String previous_code, String new_code);
+
 	void saveSettingsRequest();
+	void buzzer(uint16_t freq, uint16_t duration);
 
 	static void encoderClkInterrupt();
 	static void encoderDtInterrupt();
@@ -476,7 +535,7 @@ public:
 	Encoder* getEncoder();
 
 private:
-	void addBlynkElements();
+	void addBlynkElements(DynamicArray<blynk_element_t>* array);
 	void saveSettings(bool ignore_flag = false);
 	void readSettings();
 

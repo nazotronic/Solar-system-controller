@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  */
 
 #include "data.h"
@@ -15,6 +15,14 @@ SystemManager::SystemManager() {
 
 void SystemManager::begin() {
 	Serial.begin(9600);
+	
+	time.setSystemManager(this);
+	moduls.setSystemManager(this);
+	solar.setSystemManager(this);
+	display.setSystemManager(this);
+	network.setSystemManager(this);
+	blynk.setSystemManager(this);
+
 	LittleFS.begin();
 	time.begin();
 	moduls.begin();
@@ -29,13 +37,6 @@ void SystemManager::begin() {
 	attachInterrupt(CLK_PORT, encoderClkInterrupt, CHANGE);
 	attachInterrupt(DT_PORT, encoderDtInterrupt, CHANGE);
 	attachInterrupt(SW_PORT, encoderSwInterrupt, CHANGE);
-	
-	addBlynkElements();
-	
-	time.addBlynkElements(&blynk);
-	moduls.addBlynkElements(&blynk);
-	solar.addBlynkElements(&blynk);
-	display.addBlynkElements(&blynk);
 	
 	readSettings();
 }
@@ -61,7 +62,6 @@ void SystemManager::tick() {
 	blynk.tick();
 
 	saveSettings();
-
 	// Serial.println(millis() - tick);
 }
 
@@ -69,12 +69,6 @@ void SystemManager::makeDefault() {
 	buzzer_flag = DEFAULT_BUZZER_FLAG;
 	save_settings_request = false;
 	save_settings_timer = 0;
-
-	time.setSystemManager(this);
-	solar.setSystemManager(this);
-	display.setSystemManager(this);
-	network.setSystemManager(this);
-	blynk.setSystemManager(this);
 }
 
 void SystemManager::reset() {
@@ -88,16 +82,82 @@ void SystemManager::resetAll() {
 }
 
 
+void SystemManager::makeBlynkElementsList(DynamicArray<blynk_element_t>* array) {
+	if (array == NULL) {
+		return;
+	}
+
+	array->clear();
+	addBlynkElements(array);
+	
+#ifdef TIME_MANAGER_BLYNK_SUPPORT
+	time.addBlynkElements(array);
+#endif
+
+#ifdef MODULE_MANAGER_BLYNK_SUPPORT
+	moduls.addBlynkElements(array);
+#endif
+
+#ifdef SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
+	solar.addBlynkElements(array);
+#endif
+
+#ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
+	display.addBlynkElements(array);
+#endif
+
+#ifdef NETWORK_MANAGER_BLYNK_SUPPORT
+	network.addBlynkElements(array);
+#endif
+}
+
+int8_t SystemManager::scanBlynkElemetIndex(DynamicArray<blynk_element_t>* array, blynk_element_t* element) {
+	if (array == NULL || element == NULL) {
+		return -1;
+	}
+
+	for (uint8_t i = 0; i < array->getSize();i++) {
+		if (!strcmp((*array)[i].code, element->code)) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+int8_t SystemManager::scanBlynkElemetIndex(DynamicArray<blynk_element_t>* array, String element_code) {
+	if (array == NULL) {
+		return -1;
+	}
+
+	for (uint8_t i = 0; i < array->getSize();i++) {
+		if (!strcmp((*array)[i].code, element_code.c_str())) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+bool SystemManager::deleteBlynkLink(String element_code) {
+	return blynk.deleteLink(element_code);
+}
+
+bool SystemManager::modifyBlynkLinkElementCode(String previous_code, String new_code) {
+	return blynk.modifyLinkElementCode(previous_code, new_code);
+}
+
+
+void SystemManager::saveSettingsRequest() {
+	save_settings_request = true;
+}
+
 void SystemManager::buzzer(uint16_t freq, uint16_t duration) {
 	if (!buzzer_flag) {
 		return;
 	}
 
 	tone(BUZZER_PORT, freq, duration);
-}
-
-void SystemManager::saveSettingsRequest() {
-	save_settings_request = true;
 }
 
 
@@ -152,8 +212,12 @@ Encoder* SystemManager::getEncoder() {
 }
 
 
-void SystemManager::addBlynkElements() {
-	blynk.addElement("P buzzer", "SSb", &buzzer_flag, BLYNK_TYPE_BOOL);
+void SystemManager::addBlynkElements(DynamicArray<blynk_element_t>* array) {
+	if (array == NULL) {
+		return;
+	}
+
+	array->add(blynk_element_t("P buzzer", "SSb", &buzzer_flag, BLYNK_TYPE_BOOL));
 }
 
 void SystemManager::saveSettings(bool ignore_flag) {

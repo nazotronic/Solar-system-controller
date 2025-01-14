@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  */
 
 #include "data.h"
@@ -57,10 +57,10 @@ void NetworkManager::uiBuild() {
 		update_codes += "SMDSn";
 		update_codes += i;
 		update_codes += ",";
-		update_codes += "SMDSc";
+		update_codes += "SMDSa";
 		update_codes += i;
 		update_codes += ",";
-		update_codes += "SMDSra";
+		update_codes += "SMDSc";
 		update_codes += i;
 		update_codes += ",";
 	}
@@ -77,7 +77,7 @@ void NetworkManager::uiBuild() {
 
 	if (ui.uri("/")) {
 		M_SPOILER("Info", GP_ORANGE,
-			GP.SYSTEM_INFO("1.2.0");
+			GP.SYSTEM_INFO("1.3.0 beta");
 		);
 		
 		M_BLOCK(GP_THIN,
@@ -110,7 +110,7 @@ void NetworkManager::uiBuild() {
 					GP.LABEL(":");
 					
 					if (!modules->getDS18B20Status(i)) {
-						GP.PLAIN(String(modules->getDS18B20T(i), 1) + "°", String("Hdst") + i);
+						GP.PLAIN(String(modules->getDS18B20T(i), 1) + "°", String("HSdst") + i);
 					}
 					else {
 						GP.PLAIN("err", String("HSdst") + i);
@@ -161,8 +161,8 @@ void NetworkManager::uiBuild() {
 		GP.HR();
 		GP.SPAN("Solar Battery Control System", GP_LEFT);
 		GP.SPAN("Author: Vereshchynskyi Nazar", GP_LEFT);
-		GP.SPAN("Version: 1.2.0", GP_LEFT);
-		GP.SPAN("Date: 27.12.2024", GP_LEFT);
+		GP.SPAN("Version: 1.3.0 beta", GP_LEFT);
+		GP.SPAN("Date: 14.01.2025", GP_LEFT);
 	}
 
 	if (ui.uri("/settings")) {
@@ -190,16 +190,6 @@ void NetworkManager::uiBuild() {
 		GP.BREAK();
 
 		M_SPOILER("Blynk", GP_ORANGE,
-			String blynk_elements;
-
-			for (uint8_t i = 0;i < blynk->getElementsCount();i++) {
-				blynk_elements += blynk->getElementName(i);
-
-				if (i != blynk->getElementsCount() - 1) {
-					blynk_elements += ',';
-				}
-			}
-				
 			M_BOX(GP_LEFT,
 				GP.LABEL("Status:");
 				GP.SWITCH("SBs", blynk->getWorkFlag());
@@ -215,13 +205,31 @@ void NetworkManager::uiBuild() {
 			);
 
 			M_BLOCK(GP_THIN,
+				String blynk_elements_names;
+
+				if (!web_blynk.elements.getSize()) {
+					updateWebBlynkBlock();
+				}
+
+				for (uint8_t i = 0;i < web_blynk.elements.getSize();i++) {
+					blynk_elements_names += web_blynk.elements[i].name;
+
+					if (i !=  web_blynk.elements.getSize() - 1) {
+						blynk_elements_names += ',';
+					}
+				}
+				
 				GP.TITLE("Links");
+				GP.BUTTON("SBLs", "Scan", "", GP_ORANGE, "45%", false, true);
 
 				for (uint8_t i = 0;i < blynk->getLinksCount();i++) {
 					M_BOX(GP_LEFT,
+						blynk_element_t* blynk_element = blynk->getLinkElement(i);
+						uint8_t index = system->scanBlynkElemetIndex(&web_blynk.elements, blynk_element);
+
 						GP.LABEL("V");
 						GP.NUMBER(String("SBLp") + i, "port", blynk->getLinkPort(i), "30%");
-						GP.SELECT(String("SBLe") + i, blynk_elements, blynk->getLinkElement(i));
+						GP.SELECT(String("SBLe") + i, blynk_elements_names, index);
 						GP.BUTTON(String("SBLd") + i, "Delete", "", GP_ORANGE, "20%", false, true);
 					);
 				}
@@ -248,7 +256,7 @@ void NetworkManager::uiBuild() {
 			}
 		);
 		GP.BREAK();
-		
+
 		M_SPOILER("Modules", GP_ORANGE,
 			M_BOX(GP_LEFT,
 				GP.LABEL("Read data time:");
@@ -256,19 +264,37 @@ void NetworkManager::uiBuild() {
 				GP.PLAIN("sec");
 			);
 
-			M_BLOCK(GP_THIN, 
+			M_BLOCK(GP_THIN,
+				if (!web_modules.ds18b20_address_array.getSize()) {
+					updateWebModulesBlock();
+				}
+				
 				GP.TITLE("DS18B20");
+				GP.BUTTON("SMDSs", "Scan", "", GP_ORANGE, "45%", false, true);
 
 				for (byte i = 0;i < modules->getDS18B20Count();i++) {
-					M_BOX(GP_LEFT,
-						GP.TEXT(String("SMDSn") + i, "", modules->getDS18B20Name(i), "17%", 2);
-						GP.LABEL(":");
-						GP.NUMBER_F(String("SMDSc") + i, "", modules->getDS18B20Correction(i), 2, "25%");
-						GP.PLAIN("°");
-						GP.NUMBER(String("SMDSra") + i, "", modules->getDS18B20ReadAttempts(i), "25%");
-						GP.PLAIN("✔");
+					M_BLOCK(GP_THIN, 
+						M_BOX(GP_CENTER,
+							GP.TEXT(String("SMDSn") + i, "", modules->getDS18B20Name(i), "17%", 2);
+						);
+
+						M_BOX(GP_LEFT,
+							uint8_t* ds18b20_address = modules->getDS18B20Address(i);
+							uint8_t index = modules->scanDS18B20AddressIndex(&web_modules.ds18b20_address_array, ds18b20_address);
+							
+							GP.LABEL("Address:"); 
+							GP.SELECT(String("SMDSa") + i, web_modules.ds18b20_address_array_string, index);
+						);
+
+						M_BOX(GP_LEFT,
+							GP.LABEL("Correction:");
+							GP.NUMBER_F(String("SMDSc") + i, "", modules->getDS18B20Correction(i), 2, "25%");
+							GP.PLAIN("°");
+						);
 					);
 				}
+
+				GP.BUTTON("SMDSnd", "New ds18b20", "", GP_ORANGE, "45%", false, true);
 			);
 		);
 		GP.BREAK();
@@ -438,7 +464,10 @@ void NetworkManager::uiAction() {
 			ui.answer(blynk->getLinkPort(i));
 		}
 		if (ui.update(String("SBLe") + i)) {
-			ui.answer(blynk->getLinkElement(i));
+			blynk_element_t* blynk_element = blynk->getLinkElement(i);
+			uint8_t index = system->scanBlynkElemetIndex(&web_blynk.elements, blynk_element);
+		
+			ui.answer(index);
 		}
 	}
 
@@ -458,13 +487,17 @@ void NetworkManager::uiAction() {
 			ui.answer(modules->getDS18B20Name(i));
 		}
 
+		if (ui.update(String("SMDSa") + i)) {
+			uint8_t* ds18b20_address = modules->getDS18B20Address(i);
+			uint8_t index = modules->scanDS18B20AddressIndex(&web_modules.ds18b20_address_array, ds18b20_address);
+											
+			ui.answer(index);
+		}
+
 		if (ui.update(String("SMDSc") + i)) {
 			ui.answer(modules->getDS18B20Correction(i), 1);
 		}
 
-		if (ui.update(String("SMDSra") + i)) {
-			ui.answer(modules->getDS18B20ReadAttempts(i));
-		}
 	}
 
 	if (ui.update("SDar")) {
@@ -536,20 +569,27 @@ void NetworkManager::uiAction() {
 		blynk->setAuth(ui.getString());
 	}
 
+	if (ui.click("SBLs")) {
+		updateWebBlynkBlock();
+	}
+	if (ui.click("SBLnl")) {
+		blynk->addLink();
+	}
+	
 	for (uint8_t i = 0;i < blynk->getLinksCount();i++) {
 		if (ui.click(String("SBLp") + i)) {
 			blynk->setLinkPort(i, ui.getInt());
 		}
 		if (ui.click(String("SBLe") + i)) {
-			blynk->setLinkElement(i, ui.getInt());
+			uint8_t index = ui.getInt();
+
+			if (index < web_blynk.elements.getSize()) {
+				blynk->setLinkElement(i, &web_blynk.elements[index]);
+			}
 		}
 		if (ui.click(String("SBLd") + i)) {
-			blynk->delLink(i);
+			blynk->deleteLink(i);
 		}
-	}
-
-	if (ui.click("SBLnl")) {
-		blynk->addLink();
 	}
 
 	if (ui.click("STns")) {
@@ -570,18 +610,28 @@ void NetworkManager::uiAction() {
 	if (ui.click("SMrdt")) {
 		modules->setReadDataTime(ui.getInt());
 	}
+	if (ui.click("SMDSs")) {
+		updateWebModulesBlock();
+	}
+	if (ui.click("SMDSnd")) {
+		modules->addDS18B20();
+	}
 
 	for (byte i = 0;i < modules->getDS18B20Count();i++) {
 		if (ui.click(String("SMDSn") + i)) {
 			modules->setDS18B20Name(i, ui.getString());
 		}
 
-		if (ui.click(String("SMDSc") + i)) {
-			modules->setDS18B20Correction(i, ui.getFloat());
+		if (ui.click(String("SMDSa") + i)) {
+			uint8_t index = ui.getInt();
+
+			if (index < web_modules.ds18b20_address_array.getSize()) {
+				modules->setDS18B20Address(i, web_modules.ds18b20_address_array[index]);
+			}
 		}
 
-		if (ui.click(String("SMDSra") + i)) {
-			modules->setDS18B20ReadAttempts(i, ui.getInt());
+		if (ui.click(String("SMDSc") + i)) {
+			modules->setDS18B20Correction(i, ui.getFloat());
 		}
 	}
 	
@@ -625,3 +675,20 @@ void NetworkManager::uiAction() {
 		system->resetAll();
 	}
 }
+
+
+void NetworkManager::updateWebModulesBlock() {
+	ModuleManager* modules = system->getModuleManager();
+
+	web_modules.ds18b20_address_array_string.clear();
+	
+	modules->makeDS18B20AddressList(&web_modules.ds18b20_address_array_string);
+	modules->makeDS18B20AddressList(&web_modules.ds18b20_address_array);
+}
+
+void NetworkManager::updateWebBlynkBlock() {
+	system->makeBlynkElementsList(&web_blynk.elements);
+}
+
+NetworkManager::web_modules_block_t NetworkManager::web_modules = web_modules_block_t();
+NetworkManager::web_blynk_block_t NetworkManager::web_blynk = web_blynk_block_t();

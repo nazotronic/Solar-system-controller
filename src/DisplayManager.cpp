@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  */
 
 #include "data.h"
@@ -79,11 +79,13 @@ void DisplayManager::readSettings(char* buffer) {
 	getParameter(buffer, "SDf", &fps);
 }
 
-void DisplayManager::addBlynkElements(BlynkManager* blynk) {
-	blynk->addElement("P dspl at rs", "SDar", &auto_reset_flag, BLYNK_TYPE_BOOL);
-	blynk->addElement("P dspl time", "SDbot", &backlight_off_time, BLYNK_TYPE_UINT8_T);
-	blynk->addElement("P dspl fps", "SDf", &fps, BLYNK_TYPE_UINT8_T);
+#ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
+void DisplayManager::addBlynkElements(DynamicArray<blynk_element_t>* array) {
+	array->add(blynk_element_t("P dspl at rs", "SDar", &auto_reset_flag, BLYNK_TYPE_BOOL));
+	array->add(blynk_element_t("P dspl time", "SDbot", &backlight_off_time, BLYNK_TYPE_UINT8_T));
+	array->add(blynk_element_t("P dspl fps", "SDf", &fps, BLYNK_TYPE_UINT8_T));
 }
+#endif
 
 
 bool DisplayManager::action() {

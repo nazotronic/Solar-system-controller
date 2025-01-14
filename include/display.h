@@ -3,23 +3,26 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.2.0
- * Date: 27.12.2024
+ * Version: 1.3.0 beta
+ * Date: 14.01.2025
  */
 
 #pragma once
 
 /* --- Macroces --- */
 /* DisplayManager */
+#define DISPLAY_MANAGER_BLYNK_SUPPORT
 #define DISPLAY_AUTO_RESET_TIME 30 // min
 
-/* WindowSettings */
+/* SettingsWindow */
 #define SCREEN_EXIT_BUZZER_FREQ 200
 #define SCREEN_EXIT_BUZZER_TIME 300 // mls
 
-
 /* MainWindow */
 #define SOLAR_TICK_POINTER_TIME 500 // mls
+
+/* DS18B20AddressWindow */
+#define DS18B20_START_PRINT_BYTE 4 // byte [0 - 7]
 
 
 class LcdManager : public LiquidCrystal_I2C {
@@ -52,7 +55,9 @@ public:
 	void makeDefault();
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
-	void addBlynkElements(BlynkManager* blynk);
+#ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
+	void addBlynkElements(DynamicArray<blynk_element_t>* array);
+#endif
 
 	bool action();
 	void addWindowToStack(Window* window);
@@ -124,6 +129,14 @@ private:
 	uint8_t cursor = 0;
 };
 
+class DS18B20Window : public Window {
+public:
+	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
+
+private:
+	uint8_t cursor = 0;
+};
+
 class SettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
@@ -176,9 +189,14 @@ public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
 private:
+	bool scan_flag = true;
+	bool scan_element_index_flag = true;
 	bool print_flag = true;
 	bool value_cursor = 0;
+	uint8_t element_index = 0;
 	uint8_t cursor = 0;
+
+	DynamicArray<blynk_element_t> elements;
 };
 
 class SolarSettingsDisplay : public Window {
@@ -250,17 +268,17 @@ private:
 class DS18B20AddressWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
-	void setArray(uint8_t* array, uint8_t size);
+	void setArray(uint8_t* array);
 
 private:
 	bool print_flag = true;
 	bool scan_flag = true;
 	uint8_t cursor = 0;
-	uint8_t ds18b20_count = 0;
-	uint32_t scan_timer = 0;
+
+	DynamicArray<uint8_t[8]> address_array;
+	DynamicArray<float> t_array;
 
 	uint8_t* array;
-	uint8_t size;
 
 };
 
