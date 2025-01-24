@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0 beta
- * Date: 14.01.2025
+ * Version: 1.3.0
+ * Date: 25.01.2025
  */
 
 #include "data.h"
@@ -15,22 +15,23 @@ NetworkManager::NetworkManager() {
 
 void NetworkManager::begin() {
 	udp.begin(2390);
-	
-	ui.attachBuild(this->uiBuild);
-	ui.attach(this->uiAction);
-	ui.enableOTA();
 }
 
 
 void NetworkManager::makeDefault() {
 	mode = DEFAULT_NETWORK_MODE;
+	setAp("", "");
+  	setWifi("", "");
 	
 	reset_request = true;
 	tick_allow = true;
 	wifi_reconnect_timer = 0;
-
-	setAp("", "");
-  	setWifi("", "");
+	
+	web_update_codes.clear();
+	web_blynk.element_codes.clear();
+	web_blynk.element_codes_string.clear();
+	web_sensors.ds18b20_addresses.clear();
+	web_sensors.ds18b20_addresses_string.clear();
 }
 
 void NetworkManager::tick() {
@@ -91,11 +92,7 @@ void NetworkManager::tick() {
 
 	if (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) {
 		if (getStatus() != WL_CONNECTED) {
-			if (!wifi_reconnect_timer || millis() - wifi_reconnect_timer >= SEC_TO_MLS(NETWORK_RECONNECT_TIME)) {
-				wifi_reconnect_timer = millis();
-
-				connect();
-			}
+			connect();
 		}
 	}
 
@@ -117,17 +114,21 @@ void NetworkManager::readSettings(char* buffer) {
 	getParameter(buffer, "SNAs", ssid_ap, NETWORK_SSID_PASS_SIZE);
 	getParameter(buffer, "SNAp", pass_ap, NETWORK_SSID_PASS_SIZE);
 	
+	setMode(mode);
 	setAp(ssid_ap, pass_ap);
-	reset_request = true;
+	tick();
 }
-
 
 bool NetworkManager::connect(String ssid, String pass, uint8_t connect_time, bool auto_save) {
 	bool connect_status = false;
 	
 	if (!ssid[0]) {
-		WiFi.begin(getWifiSsid(), getWifiPass());
-		connect_status = getStatus();
+		if (!wifi_reconnect_timer || millis() - wifi_reconnect_timer >= SEC_TO_MLS(NETWORK_RECONNECT_TIME)) {
+			wifi_reconnect_timer = millis();
+
+			WiFi.begin(getWifiSsid(), getWifiPass());
+			connect_status = getStatus();
+		}
 	}
 	else {
 		uint32_t connect_timer = millis();

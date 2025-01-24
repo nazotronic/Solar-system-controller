@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0 beta
- * Date: 14.01.2025
+ * Version: 1.3.0
+ * Date: 25.01.2025
  */
 
 #include "data.h"
@@ -20,7 +20,7 @@ void MainWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 
 	switch(cursor) {
 		case 0: printHome(lcd, system); break;
-		case 1: printModules(lcd, system); break;
+		case 1: printSensors(lcd, system); break;
 		case 2: printSolar(lcd, system); break;
 		case 3: printWifi(lcd, system); break;
 		case 4: printAp(lcd, system); break;
@@ -56,10 +56,10 @@ void MainWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 			display->addWindowToStack(new SettingsWindow);
 			break;
 		case 1:
-			display->addWindowToStack(new DS18B20SettingsDisplay);
+			display->addWindowToStack(new DS18B20SensorsSettingsWindow);
 			break;
 		case 2:
-			display->addWindowToStack(new SolarSettingsDisplay);
+			display->addWindowToStack(new SolarSettingsWindow);
 			break;
 		case 3:
 		case 4:
@@ -74,7 +74,7 @@ void MainWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 
 void MainWindow::printHome(LcdManager* lcd, SystemManager* system) {
 	TimeManager* time = system->getTimeManager();
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 	SolarSystemManager* solar = system->getSolarSystemManager();
 	NetworkManager* network = system->getNetworkManager();
 	BlynkManager* blynk = system->getBlynkManager();
@@ -83,7 +83,7 @@ void MainWindow::printHome(LcdManager* lcd, SystemManager* system) {
 	uint8_t M = time->minute();
 
 	lcd->easyPrint(0, 0, (time->getStatus() && IS_EVEN_SECOND(millis()) ) ? "T" : " ");
-	lcd->print((modules->getAM2320Status() && IS_EVEN_SECOND(millis()) ) ? "A" : " ");
+	lcd->print((sensors->getAM2320Status() && IS_EVEN_SECOND(millis()) ) ? "A" : " ");
 
 	lcd->setCursor(15, 0);
 	lcd->print(solar->getReleFlag() ? (IS_EVEN_SECOND(millis()) ? ">" : "<") : " ");
@@ -124,8 +124,8 @@ void MainWindow::printHome(LcdManager* lcd, SystemManager* system) {
 	lcd->easyPrint(15, 3, String(time->day()) + "." + time->month());
 }
 
-void MainWindow::printModules(LcdManager* lcd, SystemManager* system) {
-	ModuleManager* modules = system->getModuleManager();
+void MainWindow::printSensors(LcdManager* lcd, SystemManager* system) {
+	SensorsManager* sensors = system->getSensorsManager();
 	SolarSystemManager* solar = system->getSolarSystemManager();
 
 	lcd->easyPrint(0, 0, (!solar->getBatterySensorStatus() || IS_EVEN_SECOND(millis()) ) ? "BAT" : "   ");
@@ -143,14 +143,14 @@ void MainWindow::printModules(LcdManager* lcd, SystemManager* system) {
 	lcd->print(solar->getExitT(), 2);
 	lcd->write(223);
 
-	lcd->easyPrint(12, 0, (!modules->getAM2320Status() || IS_EVEN_SECOND(millis()) ) ? "T" : " ");
+	lcd->easyPrint(12, 0, (!sensors->getAM2320Status() || IS_EVEN_SECOND(millis()) ) ? "T" : " ");
 	lcd->print(":");
-	lcd->print(modules->getAM2320T(), 2);
+	lcd->print(sensors->getAM2320T(), 2);
 	lcd->write(223);
 
-	lcd->easyPrint(12, 1, (!modules-> getAM2320Status() || IS_EVEN_SECOND(millis()) ) ? "H" : " ");
+	lcd->easyPrint(12, 1, (!sensors-> getAM2320Status() || IS_EVEN_SECOND(millis()) ) ? "H" : " ");
 	lcd->print(":");
-	lcd->print(modules->getAM2320H(), 2);
+	lcd->print(sensors->getAM2320H(), 2);
 	lcd->print("%");
 }
 
@@ -420,20 +420,20 @@ void MainWindow::makeSymbols(LcdManager* lcd) {
 
 
 void DS18B20Window::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 	Encoder* enc = system->getEncoder();
 
-	if (!modules->getDS18B20Count()) {
+	if (!sensors->getDS18B20Count()) {
 		lcd->easyPrint(1, 0, "NO DS18B20");
 	}
 	else {
 		for (uint8_t i = 0;i < 4;i++) {
 			uint8_t ds_index = (cursor * 4) + i;
 
-			if (ds_index < modules->getDS18B20Count()) {
-				lcd->easyPrint(0, i, (!modules->getDS18B20Status(ds_index) || IS_EVEN_SECOND(millis()) ) ? modules->getDS18B20Name(ds_index) : "  ");
+			if (ds_index < sensors->getDS18B20Count()) {
+				lcd->easyPrint(0, i, (!sensors->getDS18B20Status(ds_index) || IS_EVEN_SECOND(millis()) ) ? sensors->getDS18B20Name(ds_index) : "  ");
 				lcd->print(":");
-				lcd->print(modules->getDS18B20T(ds_index), 2);
+				lcd->print(sensors->getDS18B20T(ds_index), 2);
 				lcd->write(223);
 				lcd->print("   ");
 			}
@@ -446,12 +446,16 @@ void DS18B20Window::print(LcdManager* lcd, DisplayManager* display, SystemManage
 	}
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
-		uint8_t slides_count = ((int8_t) modules->getDS18B20Count() - 1) / 4;
+		uint8_t slides_count = ((int8_t) sensors->getDS18B20Count() - 1) / 4;
 
 		lcd->clear();
 		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, slides_count);
 
 		enc->isRight();
+	}
+
+	if (enc->isClick()) {
+		sensors->updateSensorsData();
 	}
 	if (enc->isHolded()) {
 		lcd->clear();
@@ -499,11 +503,11 @@ void SettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 			break;
 		
 		case 2:
-			display->addWindowToStack(new SolarSettingsDisplay);
+			display->addWindowToStack(new SolarSettingsWindow);
 			break;
 
 		case 3:
-			display->addWindowToStack(new SystemSettingsDisplay);
+			display->addWindowToStack(new SystemSettingsWindow);
 			break;
 		}
 	}
@@ -521,11 +525,11 @@ void NetworkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, Syst
 	NetworkManager* network = system->getNetworkManager();
 	Encoder* enc = system->getEncoder();
 
-	if (*ssid_ap || *pass_ap) {
-		network->setAp((*ssid_ap) ? ssid_ap : NULL, (*pass_ap) ? pass_ap : NULL);
+	if (*ssid_ap_to_set || *pass_ap_to_set) {
+		network->setAp((*ssid_ap_to_set) ? ssid_ap_to_set : NULL, (*pass_ap_to_set) ? pass_ap_to_set : NULL);
 
-		*ssid_ap = '\0';
-		*pass_ap = '\0';
+		*ssid_ap_to_set = '\0';
+		*pass_ap_to_set = '\0';
 	}
 	
 	if (print_flag) {
@@ -588,8 +592,8 @@ void NetworkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, Syst
 			{
 			KeyboardWindow* keyboard = new KeyboardWindow;
 
-			strcat(ssid_ap, network->getApSsid());
-			keyboard->setString(ssid_ap, NETWORK_SSID_PASS_SIZE);
+			strcat(ssid_ap_to_set, network->getApSsid());
+			keyboard->setString(ssid_ap_to_set, NETWORK_SSID_PASS_SIZE);
 
 			lcd->clear();
 			display->addWindowToStack(keyboard);
@@ -600,8 +604,8 @@ void NetworkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, Syst
 			{
 			KeyboardWindow* keyboard = new KeyboardWindow;
 
-			strcat(pass_ap, network->getApPass());
-			keyboard->setString(pass_ap, NETWORK_SSID_PASS_SIZE);
+			strcat(pass_ap_to_set, network->getApPass());
+			keyboard->setString(pass_ap_to_set, NETWORK_SSID_PASS_SIZE);
 
 			lcd->clear();
 			display->addWindowToStack(keyboard);
@@ -626,22 +630,22 @@ void WifiSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 	if (initialization_flag) {
 		initialization_flag = false;
 
-		strcat(ssid, network->getWifiSsid());
-		strcat(pass, network->getWifiPass());
+		strcat(ssid_to_set, network->getWifiSsid());
+		strcat(pass_to_set, network->getWifiPass());
 	}
 
 	if (print_flag) {
 		print_flag = false;
 
 		lcd->easyPrint(1, 0, "Ssid [");
-		lcd->print(ssid);
+		lcd->print(ssid_to_set);
 		lcd->print("]");
 
 		lcd->easyPrint(1, 1, "Pass [");
-		lcd->print(pass);
+		lcd->print(pass_to_set);
 		lcd->print("]");
 
-		lcd->easyPrint(1, 2, "Save          [ok]");
+		lcd->easyPrint(1, 2, "Connect       [ok]");
 	}
 	lcd->easyPrint(0, cursor, ">");
 
@@ -659,26 +663,24 @@ void WifiSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 		switch (cursor) {
 		case 0:
 			{
-			WifiStationsWindow* wifi_stations = new WifiStationsWindow;
-			wifi_stations->setString(ssid, NETWORK_SSID_PASS_SIZE);
+			SetWifiStationWindow* set_wifi_station_window = new SetWifiStationWindow;
+			set_wifi_station_window->setString(ssid_to_set, NETWORK_SSID_PASS_SIZE);
 
-			// lcd->clear();
-			display->addWindowToStack(wifi_stations);			
+			display->addWindowToStack(set_wifi_station_window);			
 			}
 
 			break;
 		case 1:
 			{
 			KeyboardWindow* keyboard = new KeyboardWindow;
-			keyboard->setString(pass, NETWORK_SSID_PASS_SIZE);
+			keyboard->setString(pass_to_set, NETWORK_SSID_PASS_SIZE);
 
-			// lcd->clear();
 			display->addWindowToStack(keyboard);			
 			}
 
 			break;
 		case 2:
-			if (!*ssid) {
+			if (!*ssid_to_set) {
 				network->setWifi("", "");
 			}
 			else {
@@ -686,10 +688,10 @@ void WifiSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 				display->setWorkFlag(false);
 				
 				lcd->easyPrint(0, 0, "Connecting to:");
-				lcd->easyPrint(2, 1, ssid);
+				lcd->easyPrint(2, 1, ssid_to_set);
 				lcd->easyPrint(2, 2, "...");
 
-				connect_flag = network->connect(ssid, pass, 10, true);
+				connect_flag = network->connect(ssid_to_set, pass_to_set, 10, true);
 
 				lcd->easyPrint(2, 2, (connect_flag) ? "OK " : "ERR");
 			
@@ -750,7 +752,7 @@ void BlynkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, System
 		lcd->clearLine(cursor % 4);
 
 		switch (cursor) {
-		case 2:
+		case 1:
 			blynk->setSendDataTime(blynk->getSendDataTime() + (enc->isLeftH() ? -1 : 1));
 			break;
 		}
@@ -796,12 +798,12 @@ void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, S
 		scan_flag = false;
 		print_flag = true;
 
-		system->makeBlynkElementsList(&elements);
+		system->makeBlynkElementCodesList(&element_codes);
 	}
 
 	if (scan_element_index_flag) {
 		scan_element_index_flag = false;
-		element_index = system->scanBlynkElemetIndex(&elements, blynk->getLinkElement(cursor));
+		element_index = system->scanBlynkElemetCodeIndex(&element_codes, blynk->getLinkElementCode(cursor));
 	}
 
 	if (print_flag) {
@@ -814,7 +816,7 @@ void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, S
 				lcd->easyPrint(1, i, String("V") + blynk->getLinkPort(link_index));
 
 				lcd->easyPrint(8, i, "[");
-				lcd->print(blynk->getLinkElementName(link_index));
+				lcd->print(blynk->getLinkElementCode(link_index));
 				lcd->print("]");
 			}
 
@@ -853,15 +855,17 @@ void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, S
 
 			case true:
 				if (!element_index && enc->isLeftH(true)) {
+					scan_element_index_flag = true;
+
 					blynk->deleteLink(cursor);
 					lcd->clear();
 
 					break;
 				}
 				
-				element_index += (enc->isLeftH() ? -1 : 1);
+				smartIncr(element_index, (enc->isLeftH() ? -1 : 1), 0, element_codes.size() - 1);
 
-				blynk->setLinkElement(cursor, &elements[element_index]);
+				blynk->setLinkElementCode(cursor, element_codes[element_index]);
 				break;
 			}
 	  	}
@@ -881,6 +885,8 @@ void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, S
 				lcd->easyPrint(1, cursor % 4, "ERR");
 				delay(500);
 			}
+
+			lcd->clearLine(cursor % 4);
 	  	}
 	}
 	if (enc->isHolded()) {
@@ -892,9 +898,9 @@ void BlynkLinksSettingsWindow::print(LcdManager* lcd, DisplayManager* display, S
 }
 
 
-void SolarSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void SolarSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	SolarSystemManager* solar = system->getSolarSystemManager();
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 	Encoder* enc = system->getEncoder();
 
 	if (print_flag) {
@@ -934,7 +940,7 @@ void SolarSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syste
 				}
 				
 				lcd->print(" [");
-				lcd->print((sensor_index >= 0) ? modules->getDS18B20Name(sensor_index) : "NONE");
+				lcd->print((sensor_index >= 0) ? sensors->getDS18B20Name(sensor_index) : "NONE");
 				lcd->print("]");
 			}
 		}
@@ -1000,8 +1006,8 @@ void SolarSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syste
 }
 
 
-void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
-	ModuleManager* modules = system->getModuleManager();
+void SystemSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+	SensorsManager* sensors = system->getSensorsManager();
 	Encoder* enc = system->getEncoder();
 
 	if (print_flag) {
@@ -1013,7 +1019,7 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 			lcd->easyPrint(1, 2, "Reset All     [ok]");
 
 			lcd->easyPrint(1, 3, "Time data [");
-			lcd->print(modules->getReadDataTime());
+			lcd->print(sensors->getReadDataTime());
 			lcd->print("]");
 		}
 
@@ -1054,9 +1060,8 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 
 		switch (cursor) {
 		case 3:
-			modules->setReadDataTime(modules->getReadDataTime() + (enc->isLeftH() ? -1 : 1));
+			sensors->setReadDataTime(sensors->getReadDataTime() + (enc->isLeftH() ? -1 : 1));
 			break;
-			
 		case 5:
 			display->setBacklightOffTime(display->getBacklightOffTime() + (enc->isLeftH() ? -1 : 1));
 			break;
@@ -1075,12 +1080,12 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 		switch(cursor) {
 		case 0:
 			lcd->clear();
-			display->addWindowToStack(new TimeSettingsDisplay);
+			display->addWindowToStack(new TimeSettingsWindow);
 
 			break; 
 		case 1:
 			lcd->clear();
-			display->addWindowToStack(new DS18B20SettingsDisplay);
+			display->addWindowToStack(new DS18B20SensorsSettingsWindow);
 
 			break;
 		case 2:
@@ -1109,7 +1114,7 @@ void SystemSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Syst
 }
 
 
-void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void TimeSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	TimeManager* time = system->getTimeManager();
 	Encoder* enc = system->getEncoder();
 	
@@ -1169,16 +1174,16 @@ void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, System
 			break;
 		case 2:
 			if (!time->getNtpFlag()) {
-				TimeSetDisplay* time_set_display = new TimeSetDisplay;
+				SetTimeWindow* set_time_window = new SetTimeWindow;
 				TimeT time_now = time->getTime();
-				
+
 				time_to_set = new TimeT;
 
 				memcpy(time_to_set, &time_now, sizeof(TimeT));
-				time_set_display->setTimeT(time_to_set);
+				set_time_window->setTimeT(time_to_set);
 
 				lcd->clear();
-				display->addWindowToStack(time_set_display);
+				display->addWindowToStack(set_time_window);
 			}
 
 			break;
@@ -1194,18 +1199,18 @@ void TimeSettingsDisplay::print(LcdManager* lcd, DisplayManager* display, System
 }
 
 
-void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
-	ModuleManager* modules = system->getModuleManager();
+void DS18B20SensorsSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+	SensorsManager* sensors = system->getSensorsManager();
 	Encoder* enc = system->getEncoder();
 
 	if (ds18b20_to_set != NULL) {
-		modules->setDS18B20(cursor, ds18b20_to_set);
+		sensors->setDS18B20(cursor, ds18b20_to_set);
 		free(ds18b20_to_set);
 
 		ds18b20_to_set = NULL;
 	}
 
-	if (millis() - update_timer > SEC_TO_MLS(modules->getReadDataTime()) ) {
+	if (!update_timer || millis() - update_timer > SEC_TO_MLS(sensors->getReadDataTime()) ) {
 		update_timer = millis();
 		print_flag = true;
 	}
@@ -1216,10 +1221,10 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 		for (uint8_t i = 0;i < 4;i++) {
 			uint8_t ds_index = (cursor / 4) * 4 + i;
 
-			if (ds_index < modules->getDS18B20Count()) {
-				lcd->easyPrint(1, i, modules->getDS18B20Name(ds_index));
+			if (ds_index < sensors->getDS18B20Count()) {
+				lcd->easyPrint(1, i, sensors->getDS18B20Name(ds_index));
 
-				lcd->easyPrint(8, i, modules->getDS18B20T(ds_index));
+				lcd->easyPrint(8, i, sensors->getDS18B20T(ds_index));
 				lcd->write(223);
 			}
 
@@ -1234,7 +1239,7 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 		
-		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, modules->getDS18B20Count()) ) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, sensors->getDS18B20Count()) ) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1245,8 +1250,8 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 	if (enc->isLeftH(true) || enc->isRightH(true)) {
 		print_flag = true;
 
-		if (cursor < modules->getDS18B20Count()) {
-			modules->deleteDS18B20(cursor);
+		if (cursor < sensors->getDS18B20Count()) {
+			sensors->deleteDS18B20(cursor);
 			lcd->clear();
 		}
 
@@ -1258,23 +1263,22 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 		print_flag = true;
 		lcd->clear();
 		
-		if (cursor < modules->getDS18B20Count()) {
-			DS18B20SetDisplay* ds18b20_set_display = new DS18B20SetDisplay;	
+		if (cursor < sensors->getDS18B20Count()) {
+			SetDS18B20Window* set_ds18b20_window = new SetDS18B20Window;	
 			ds18b20_to_set = new ds18b20_data_t;
 
-			// print_flag = true;
+			memcpy(ds18b20_to_set, sensors->getDS18B20(cursor), sizeof(ds18b20_data_t));
+			set_ds18b20_window->setDS18B20(ds18b20_to_set);
 
-			memcpy(ds18b20_to_set, modules->getDS18B20(cursor), sizeof(ds18b20_data_t));
-			ds18b20_set_display->setDS18B20(ds18b20_to_set);
-
-			// lcd->clear();
-			display->addWindowToStack(ds18b20_set_display);
+			display->addWindowToStack(set_ds18b20_window);
 		}
 		else {
-			if (!modules->addDS18B20()) {
+			if (!sensors->addDS18B20()) {
 				lcd->easyPrint(1, cursor % 4, "ERR");
 				delay(500);
 			}
+
+			lcd->clearLine(cursor % 4);
 	  	}
 	}
 	if (enc->isHolded()) {
@@ -1286,23 +1290,29 @@ void DS18B20SettingsDisplay::print(LcdManager* lcd, DisplayManager* display, Sys
 }
 
 
-void TimeSetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void SetTimeWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
+
+	if (create_symbol_flag) {
+		create_symbol_flag = false;
+
+		lcd->createChar(0, down_symbol);
+	}
 	
 	if (print_flag) {
 		print_flag = false;
 
-		lcd->easyPrint(5, 1, time->hour);
+		lcd->easyPrint(5, 1, config_time->hour);
 		lcd->easyPrint(7, 1, ":");
-		lcd->print(time->minute);
+		lcd->print(config_time->minute);
 		lcd->easyPrint(10, 1, ":");
-		lcd->print(time->second);
+		lcd->print(config_time->second);
 
-		lcd->easyPrint(5, 3, time->day);
+		lcd->easyPrint(5, 3, config_time->day);
 		lcd->easyPrint(7, 3, ".");
-		lcd->print(time->month);
+		lcd->print(config_time->month);
 		lcd->easyPrint(10, 3, ".");
-		lcd->print(time->year);
+		lcd->print(config_time->year);
 	}
 	lcd->easyWrite(5 + (cursor % 3) * 3, 2, (cursor < 3) ? '^' : (char)0);
 	lcd->easyWrite(6 + (cursor % 3) * 3, 2, (cursor < 3) ? '^' : (char)0);
@@ -1320,22 +1330,22 @@ void TimeSetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManag
 
 		switch (cursor) {
 		case 0:
-			smartIncr(time->hour, enc->isLeftH() ? -1 : 1, 0, 23);
+			smartIncr(config_time->hour, enc->isLeftH() ? -1 : 1, 0, 23);
 			break;
 		case 1:
-			smartIncr(time->minute, enc->isLeftH() ? -1 : 1, 0, 59);
+			smartIncr(config_time->minute, enc->isLeftH() ? -1 : 1, 0, 59);
 			break;
 		case 2:
-			smartIncr(time->second, enc->isLeftH() ? -1 : 1, 0, 59);
+			smartIncr(config_time->second, enc->isLeftH() ? -1 : 1, 0, 59);
 			break;
 		case 3:
-			smartIncr(time->day, enc->isLeftH() ? -1 : 1, 1, 31);
+			smartIncr(config_time->day, enc->isLeftH() ? -1 : 1, 1, 31);
 			break;
 		case 4:
-			smartIncr(time->month, enc->isLeftH() ? -1 : 1, 1, 12);
+			smartIncr(config_time->month, enc->isLeftH() ? -1 : 1, 1, 12);
 			break;
 		case 5:
-			smartIncr(time->year, enc->isLeftH() ? -1 : 1, 1970, 2037);
+			smartIncr(config_time->year, enc->isLeftH() ? -1 : 1, 1970, 2037);
 			break;
 		}
 
@@ -1350,53 +1360,59 @@ void TimeSetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManag
 	}
 }
 
-void TimeSetDisplay::setTimeT(TimeT* time) {
-	this->time = time;
+void SetTimeWindow::setTimeT(TimeT* time) {
+	this->config_time = time;
 }
 
 
-void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
-	ModuleManager* modules = system->getModuleManager();
+void SetDS18B20Window::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+	SensorsManager* sensors = system->getSensorsManager();
 	Encoder* enc = system->getEncoder();
 
-	if (millis() - update_timer > SEC_TO_MLS(modules->getReadDataTime()) ) {
+	if (!update_timer || millis() - update_timer > SEC_TO_MLS(sensors->getReadDataTime()) ) {
 		update_timer = millis();
 		print_flag = true;
 	}
 
 	if (print_flag) {
 		print_flag = false;
-		float t = modules->scanDS18B20TByAddress(ds18b20->address);
+		if (!(cursor / 4)) {
+			float t = sensors->getDS18B20TByAddress(config_ds18b20->address);
 
-		lcd->easyPrint(1, 0, ds18b20->name);
+			lcd->easyPrint(1, 0, config_ds18b20->name);
 
-		lcd->setCursor(8, 0);
-		if (*ds18b20->address) {
-			lcd->print(t);
-			lcd->write(223);
-		}
-		else {
-			lcd->print("ERR");
-		}
-
-		lcd->easyPrint(1, 1, "Name [");
-		lcd->print(ds18b20->name);
-		lcd->print("]");
-
-		lcd->easyPrint(1, 2, "Addr [");
-		for (uint8_t i = 0;i < 3;i++) {
-			lcd->print(ds18b20->address[i], HEX);
-					
-			if (i != 2) {
-				lcd->print("-");
+			lcd->setCursor(8, 0);
+			if (*config_ds18b20->address) {
+				lcd->print(t);
+				lcd->write(223);
 			}
-		}
-		lcd->print("]");
+			else {
+				lcd->print("ERR");
+			}
 
-		lcd->easyPrint(1, 3, "Correction [");
-		lcd->print(ds18b20->correction);
-		lcd->print("]");
-		
+			lcd->easyPrint(1, 1, "Name [");
+			lcd->print(config_ds18b20->name);
+			lcd->print("]");
+
+			lcd->easyPrint(1, 2, "Addr [");
+			for (uint8_t i = 0;i < 3;i++) {
+				lcd->print(config_ds18b20->address[i], HEX);
+						
+				if (i != 2) {
+					lcd->print("-");
+				}
+			}
+			lcd->print("]");
+
+			lcd->easyPrint(1, 3, "Correction [");
+			lcd->print(config_ds18b20->correction);
+			lcd->print("]");
+		}
+		if (cursor / 4 == 1) {
+			lcd->easyPrint(1, 0, "Resolution [");
+			lcd->print(config_ds18b20->resolution);
+			lcd->print("]");
+		}
 	}
 	lcd->easyPrint(0, cursor % 4, ">");
 
@@ -1417,7 +1433,10 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 
 		switch (cursor) {
 		case 3:
-			smartIncr(ds18b20->correction, enc->isLeftH() ? -0.1 : 0.1, -20, 20);
+			smartIncr(config_ds18b20->correction, enc->isLeftH() ? -0.1 : 0.1, -20, 20);
+			break;
+		case 4:
+			smartIncr(config_ds18b20->resolution, enc->isLeftH() ? -1 : 1, 9, 12);
 			break;
 		}
 
@@ -1430,23 +1449,24 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 		lcd->clear();
 
 		switch (cursor) {
+		case 0:
+			update_timer = 0;
+			break;
 		case 1:
 			{
 			KeyboardWindow* keyboard = new KeyboardWindow;
-			keyboard->setString(ds18b20->name, DS_NAME_SIZE);
+			keyboard->setString(config_ds18b20->name, DS_NAME_SIZE);
 
-			// lcd->clear();
 			display->addWindowToStack(keyboard);	
 			}
 
 			break;
 		case 2:
 			{
-			DS18B20AddressWindow* ds18b20_address_set = new DS18B20AddressWindow;
-			ds18b20_address_set->setArray(ds18b20->address);
+			SetDS18B20AddressWindow* set_ds18b20_address_window = new SetDS18B20AddressWindow;
+			set_ds18b20_address_window->setArray(config_ds18b20->address);
 
-			// lcd->clear();
-			display->addWindowToStack(ds18b20_address_set);	
+			display->addWindowToStack(set_ds18b20_address_window);	
 			}
 
 			break;
@@ -1460,13 +1480,13 @@ void DS18B20SetDisplay::print(LcdManager* lcd, DisplayManager* display, SystemMa
 	}
 }
 
-void DS18B20SetDisplay::setDS18B20(ds18b20_data_t* ds18b20) {
-	this->ds18b20 = ds18b20;
+void SetDS18B20Window::setDS18B20(ds18b20_data_t* ds18b20) {
+	this->config_ds18b20 = ds18b20;
 }
 
 
-void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
-	ModuleManager* modules = system->getModuleManager();
+void SetDS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+	SensorsManager* sensors = system->getSensorsManager();
 	Encoder* enc = system->getEncoder();
 
 	if (scan_flag) {
@@ -1476,11 +1496,11 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 		lcd->clear();
 		lcd->easyPrint(2, 1, "Scanning");
 
-		modules->makeDS18B20AddressList(&address_array, &t_array);
-		cursor = (cursor >= address_array.getSize()) ? address_array.getSize() - 1 : cursor;
+		sensors->makeDS18B20AddressList(&ds18b20_addresses, &t_array);
+		cursor = (cursor >= ds18b20_addresses.size()) ? ds18b20_addresses.size() - 1 : cursor;
 
-		lcd->easyPrint(2, 2, (address_array.getSize()) ? "OK " : "ERR");
-		lcd->easyPrint(2, 3, (int32_t) address_array.getSize());
+		lcd->easyPrint(2, 2, (ds18b20_addresses.size()) ? "OK " : "ERR");
+		lcd->easyPrint(2, 3, (int32_t) ds18b20_addresses.size());
 		lcd->print("sensors");
 
 		delay(500);
@@ -1490,19 +1510,19 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 	if (print_flag) {
 		print_flag = false;
 
-		if (!address_array.getSize()) {
+		if (!ds18b20_addresses.size()) {
 			lcd->clear();
 			lcd->easyPrint(1, 0, "NO DS18B20");
 		}
 		else {
 			for (uint8_t i = 0;i < 4;i++) {
-				uint8_t ds_index = (cursor / 4) * 4 + i;
+				uint8_t addr_index = (cursor / 4) * 4 + i;
 
-				if (ds_index < address_array.getSize()) {
+				if (addr_index < ds18b20_addresses.size()) {
 					lcd->setCursor(1, i);
 
 					for (uint8_t j = 0;j < 4;j++) {
-						lcd->print(address_array[ds_index][DS18B20_START_PRINT_BYTE + j], HEX);
+						lcd->print(ds18b20_addresses[addr_index][DS18B20_START_PRINT_BYTE + j], HEX);
 								
 						if (j != 3) {
 							lcd->print("-");
@@ -1510,7 +1530,7 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 					}
 
 					lcd->print(" ");
-					lcd->print(t_array[ds_index]);
+					lcd->print(t_array[addr_index]);
 					lcd->write(223);
 				}
 			}
@@ -1521,7 +1541,7 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 	if (enc->isLeft(true) || enc->isRight(true)) {
 		lcd->easyPrint(0, cursor % 4, " ");
 
-		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, address_array.getSize() - 1)) {
+		if (windowCursorTick(cursor, enc->isLeft() ? -1 : 1, ds18b20_addresses.size() - 1)) {
 			print_flag = true;
 			lcd->clear();
 		}
@@ -1530,7 +1550,7 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 	}
 
 	if (enc->isClick()) {
-		memcpy(array, address_array[cursor], 8);
+		memcpy(config_address, ds18b20_addresses[cursor], 8);
 	
 		lcd->clear();
 		display->deleteWindowFromStack(this);
@@ -1540,12 +1560,12 @@ void DS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 	}
 }
 
-void DS18B20AddressWindow::setArray(uint8_t* array) {
-	this->array = array;
+void SetDS18B20AddressWindow::setArray(uint8_t* array) {
+	this->config_address = array;
 }
 
 
-void WifiStationsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
+void SetWifiStationWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
 
 	if (scan_flag) {
@@ -1591,10 +1611,9 @@ void WifiStationsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 	}
 
 	if (enc->isClick()) {
-		strcpy(string, WiFi.SSID(cursor).c_str());
+		strcpy(config_string, WiFi.SSID(cursor).c_str());
 
 		lcd->clear();
-
 		display->deleteWindowFromStack(this);
 	}
 	if (enc->isHolded()) {
@@ -1602,15 +1621,15 @@ void WifiStationsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 	}
 }
 
-void WifiStationsWindow::setString(char* string, uint8_t size) {
-	this->string = string;
-	this->size = size;
+void SetWifiStationWindow::setString(char* string, uint8_t size) {
+	this->config_string = string;
+	this->string_size = size;
 }
 
 
 void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* system) {
 	Encoder* enc = system->getEncoder();
-	string_size_now = strlen(string);
+	string_size_now = strlen(config_string);
 	
 	if (create_symbol_flag) {
 		create_symbol_flag = false;
@@ -1622,11 +1641,11 @@ void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 		print_string_flag = false;
 
 		for (uint8_t i = 0;i < string_size_now;i++) {
-			lcd->easyWrite(i, 0, (i == cursor && IS_EVEN_SECOND(millis()) ) ? '|' : string[i]);
+			lcd->easyWrite(i, 0, (i == cursor && IS_EVEN_SECOND(millis()) ) ? '|' : config_string[i]);
 		}
 	}
 
-	if (cursor == string_size_now && cursor != size - 1) {
+	if (cursor == string_size_now && cursor != string_size - 1) {
 		lcd->easyWrite(cursor, 0, IS_EVEN_SECOND(millis()) ? '_' : 32);
 	}
 		
@@ -1658,15 +1677,15 @@ void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 		
 	if (enc->isClick()) {
 		if (key_cursor < 38) {
-			if (string[cursor]) {
-				string[cursor] = (!caps) ? keyboard1[key_cursor] : keyboard2[key_cursor];
+			if (config_string[cursor]) {
+				config_string[cursor] = (!caps) ? keyboard1[key_cursor] : keyboard2[key_cursor];
 				cursor++;
 			}
 			else {
-				if (cursor != size - 1) {
-					string[cursor] = (!caps) ? keyboard1[key_cursor] : keyboard2[key_cursor];
+				if (cursor != string_size - 1) {
+					config_string[cursor] = (!caps) ? keyboard1[key_cursor] : keyboard2[key_cursor];
 					cursor++;
-					string[cursor] = '\0';
+					config_string[cursor] = '\0';
 				}
 			}
 		}
@@ -1675,8 +1694,8 @@ void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 				uint8_t pointer = cursor - 1;
 				lcd->clearLine(0);
 			
-				while (string[pointer]) {
-					string[pointer] = string[pointer + 1];
+				while (config_string[pointer]) {
+					config_string[pointer] = config_string[pointer + 1];
 					pointer++;
 				}
 					
@@ -1698,6 +1717,6 @@ void KeyboardWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 }
 
 void KeyboardWindow::setString(char* string, uint8_t size) {
-	this->string = string;
-	this->size = size;
+	this->config_string = string;
+	this->string_size = size;
 }

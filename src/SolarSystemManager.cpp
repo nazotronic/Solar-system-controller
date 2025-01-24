@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0 beta
- * Date: 14.01.2025
+ * Version: 1.3.0
+ * Date: 25.01.2025
  */
 
 #include "data.h"
@@ -77,15 +77,56 @@ void SolarSystemManager::readSettings(char* buffer) {
 	getParameter(buffer, "SSSba", &battery_sensor_index);
 	getParameter(buffer, "SSSbo", &boiler_sensor_index);
 	getParameter(buffer, "SSSex", &exit_sensor_index);
+
+	setWorkFlag(work_flag);
+	setErrorOnFlag(error_on_flag);
+	setReleInvertFlag(rele_invert_flag);
+	setDelta(delta);
+	setBatterySensor(battery_sensor_index);
+	setBoilerSensor(boiler_sensor_index);
+	setExitSensor(exit_sensor_index);
 }
 
 #ifdef SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
-void SolarSystemManager::addBlynkElements(DynamicArray<blynk_element_t>* array) {
-	array->add(blynk_element_t("PSL status", "SSSs", &work_flag, BLYNK_TYPE_BOOL));
-	array->add(blynk_element_t("PSL rele", "HSSpu", &rele_flag, BLYNK_TYPE_BOOL));
-	array->add(blynk_element_t("PSl error on", "SSSeo", &error_on_flag, BLYNK_TYPE_BOOL));
-	array->add(blynk_element_t("PSl rele inv", "SSSri", &rele_invert_flag, BLYNK_TYPE_BOOL));
-	array->add(blynk_element_t("PSL delta", "SSSd", &delta, BLYNK_TYPE_UINT8_T));
+void SolarSystemManager::addBlynkElementCodes(DynamicArray<String>* array) {
+	if (array == NULL) {
+		return;
+	}
+
+	array->add(String("SSSs"));
+	array->add(String("HSSpu"));
+}
+
+bool SolarSystemManager::blynkElementSend(BlynkWifi* Blynk, blynk_link_t* link) {
+	if (Blynk == NULL || link == NULL) {
+		return false;
+	}
+
+	if (!strcmp(link->element_code, "SSSs")) {
+		Blynk->virtualWrite(link->port, getWorkFlag());
+		return true;
+	}
+	
+	if (!strcmp(link->element_code, "HSSpu")) {
+		Blynk->virtualWrite(link->port, getReleFlag());
+		return true;
+	}
+
+	return false;
+}
+
+bool SolarSystemManager::blynkElementParse(String code, const BlynkParam& param) {
+	if (!strcmp(code.c_str(), "SSSs")) {
+		setWorkFlag(param.asInt());
+		return true;
+	}
+	
+	if (!strcmp(code.c_str(), "HSSpu")) {
+		setReleFlag(param.asInt());
+		return true;
+	}
+
+	return false;
 }
 #endif
 
@@ -135,23 +176,23 @@ void SolarSystemManager::setSensor(uint8_t solar_sensor, int8_t ds18b20_index) {
 }
 
 void SolarSystemManager::setBatterySensor(int8_t ds18b20_index) {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
-	battery_sensor_index = constrain(ds18b20_index, -1, modules->getDS18B20Count() - 1);
+	battery_sensor_index = constrain(ds18b20_index, -1, sensors->getDS18B20Count() - 1);
 	tick();
 }
 
 void SolarSystemManager::setBoilerSensor(int8_t ds18b20_index) {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
-	boiler_sensor_index = constrain(ds18b20_index, -1, modules->getDS18B20Count() - 1);
+	boiler_sensor_index = constrain(ds18b20_index, -1, sensors->getDS18B20Count() - 1);
 	tick();
 }
 
 void SolarSystemManager::setExitSensor(int8_t ds18b20_index) {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
-	exit_sensor_index = constrain(ds18b20_index, -1, modules->getDS18B20Count() - 1);
+	exit_sensor_index = constrain(ds18b20_index, -1, sensors->getDS18B20Count() - 1);
 	tick();
 }
 
@@ -192,28 +233,28 @@ uint8_t SolarSystemManager::getDelta() {
 
 
 uint8_t SolarSystemManager::getBatterySensorStatus() {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
-	if (getBatterySensor() >= modules->getDS18B20Count() || getBatterySensor() < 0) return 1;
-	if (modules->getDS18B20Status(getBatterySensor()) ) return 2;
+	if (getBatterySensor() >= sensors->getDS18B20Count() || getBatterySensor() < 0) return 1;
+	if (sensors->getDS18B20Status(getBatterySensor()) ) return 2;
 
 	return 0;
 }
 
 uint8_t SolarSystemManager::getBoilerSensorStatus() {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
-	if (getBoilerSensor() >= modules->getDS18B20Count() || getBoilerSensor() < 0) return 1;
-	if (modules->getDS18B20Status(getBoilerSensor()) ) return 2;
+	if (getBoilerSensor() >= sensors->getDS18B20Count() || getBoilerSensor() < 0) return 1;
+	if (sensors->getDS18B20Status(getBoilerSensor()) ) return 2;
 
 	return 0;
 }
 
 uint8_t SolarSystemManager::getExitSensorStatus() {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
-	if (getExitSensor() >= modules->getDS18B20Count() || getExitSensor() < 0) return 1;
-	if (modules->getDS18B20Status(getExitSensor()) ) return 2;
+	if (getExitSensor() >= sensors->getDS18B20Count() || getExitSensor() < 0) return 1;
+	if (sensors->getDS18B20Status(getExitSensor()) ) return 2;
 
 	return 0;
 }
@@ -249,33 +290,33 @@ int8_t SolarSystemManager::getExitSensor() {
 
 
 float SolarSystemManager::getBatteryT() {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
 	if (getBatterySensorStatus()) {
 		return 0;
 	}
 
-	return modules->getDS18B20T(getBatterySensor());
+	return sensors->getDS18B20T(getBatterySensor());
 }
 
 float SolarSystemManager::getBoilerT() {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
 	if (getBoilerSensorStatus()) {
 		return 0;
 	}
 
-	return modules->getDS18B20T(getBoilerSensor());
+	return sensors->getDS18B20T(getBoilerSensor());
 }
 
 float SolarSystemManager::getExitT() {
-	ModuleManager* modules = system->getModuleManager();
+	SensorsManager* sensors = system->getSensorsManager();
 
 	if (getExitSensorStatus()) {
 		return 0;
 	}
 
-	return modules->getDS18B20T(getExitSensor());
+	return sensors->getDS18B20T(getExitSensor());
 }
 
 

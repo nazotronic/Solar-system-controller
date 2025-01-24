@@ -3,15 +3,14 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0 beta
- * Date: 14.01.2025
+ * Version: 1.3.0
+ * Date: 25.01.2025
  */
 
 #pragma once
 
 /* --- Macroces --- */
 /* DisplayManager */
-#define DISPLAY_MANAGER_BLYNK_SUPPORT
 #define DISPLAY_AUTO_RESET_TIME 30 // min
 
 /* SettingsWindow */
@@ -21,7 +20,7 @@
 /* MainWindow */
 #define SOLAR_TICK_POINTER_TIME 500 // mls
 
-/* DS18B20AddressWindow */
+/* SetDS18B20AddressWindow */
 #define DS18B20_START_PRINT_BYTE 4 // byte [0 - 7]
 
 
@@ -29,7 +28,7 @@ class LcdManager : public LiquidCrystal_I2C {
 public:
 	LcdManager();
 
-	void printTitle(uint8_t y, String title, uint16_t delay_time = 800);
+	void printTitle(uint8_t y, String title, uint16_t delay_time = 800, bool clear_flag = true);
 	void easyPrint(uint8_t x, uint8_t y, String string);
 	void easyPrint(uint8_t x, uint8_t y, int32_t number);
 	void easyPrint(uint8_t x, uint8_t y, float number);
@@ -49,6 +48,7 @@ struct window_list_node_t {
 class DisplayManager {
 public: 
 	DisplayManager();
+	~DisplayManager();
 	void begin();
 	
 	void tick();
@@ -56,7 +56,9 @@ public:
 	void writeSettings(char* buffer);
 	void readSettings(char* buffer);
 #ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
-	void addBlynkElements(DynamicArray<blynk_element_t>* array);
+	void addBlynkElementCodes(DynamicArray<String>* array);
+	bool blynkElementSend(BlynkWifi* Blynk, blynk_link_t* link);
+	bool blynkElementParse(String code, const BlynkParam& param);
 #endif
 
 	bool action();
@@ -110,7 +112,7 @@ public:
 
 private:
 	void printHome(LcdManager* lcd, SystemManager* system);
-	void printModules(LcdManager* lcd, SystemManager* system);
+	void printSensors(LcdManager* lcd, SystemManager* system);
 	void printSolar(LcdManager* lcd, SystemManager* system);
 	void printWifi(LcdManager* lcd, SystemManager* system);
 	void printAp(LcdManager* lcd, SystemManager* system);
@@ -145,7 +147,6 @@ private:
 	bool print_title_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
-
 };
 
 class NetworkSettingsWindow : public Window {
@@ -156,8 +157,8 @@ private:
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
-	char ssid_ap[NETWORK_SSID_PASS_SIZE] = "";
-	char pass_ap[NETWORK_SSID_PASS_SIZE] = "";
+	char ssid_ap_to_set[NETWORK_SSID_PASS_SIZE] = "";
+	char pass_ap_to_set[NETWORK_SSID_PASS_SIZE] = "";
 };
 
 class WifiSettingsWindow : public Window {
@@ -170,8 +171,8 @@ private:
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
-	char ssid[NETWORK_SSID_PASS_SIZE] = "";
-	char pass[NETWORK_SSID_PASS_SIZE] = "";
+	char ssid_to_set[NETWORK_SSID_PASS_SIZE] = "";
+	char pass_to_set[NETWORK_SSID_PASS_SIZE] = "";
 };
 
 class BlynkSettingsWindow : public Window {
@@ -181,7 +182,6 @@ public:
 private:
 	bool print_flag = true;
 	uint8_t cursor = 0;
-
 };
 
 class BlynkLinksSettingsWindow : public Window {
@@ -196,10 +196,10 @@ private:
 	uint8_t element_index = 0;
 	uint8_t cursor = 0;
 
-	DynamicArray<blynk_element_t> elements;
+	DynamicArray<String> element_codes;
 };
 
-class SolarSettingsDisplay : public Window {
+class SolarSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -208,7 +208,7 @@ private:
 	uint8_t cursor = 0;
 };
 
-class SystemSettingsDisplay : public Window {
+class SystemSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -217,7 +217,7 @@ private:
 	uint8_t cursor = 0;
 };
 
-class TimeSettingsDisplay : public Window {
+class TimeSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -228,7 +228,7 @@ private:
 	TimeT* time_to_set = NULL;
 };
 
-class DS18B20SettingsDisplay : public Window {
+class DS18B20SensorsSettingsWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 
@@ -240,49 +240,49 @@ private:
 	ds18b20_data_t* ds18b20_to_set = NULL;
 };
 
-class TimeSetDisplay : public Window {
+class SetTimeWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setTimeT(TimeT* time);
 
 private:
+	bool create_symbol_flag = true;
 	bool print_flag = true;
 	uint8_t cursor = 0;
 
-	TimeT* time = NULL;
+	TimeT* config_time = NULL;
 };
 
-class DS18B20SetDisplay : public Window {
+class SetDS18B20Window : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setDS18B20(ds18b20_data_t* ds18b20);
 
 private:
 	bool print_flag = true;
-	uint8_t cursor = 1;
+	uint8_t cursor = 0;
 	uint32_t update_timer = 0;
 
-	ds18b20_data_t* ds18b20 = NULL;
+	ds18b20_data_t* config_ds18b20 = NULL;
 };
 
-class DS18B20AddressWindow : public Window {
+class SetDS18B20AddressWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
-	void setArray(uint8_t* array);
+	void setArray(uint8_t* address);
 
 private:
 	bool print_flag = true;
 	bool scan_flag = true;
 	uint8_t cursor = 0;
 
-	DynamicArray<uint8_t[8]> address_array;
+	DynamicArray<DeviceAddress> ds18b20_addresses;
 	DynamicArray<float> t_array;
 
-	uint8_t* array;
-
+	uint8_t* config_address;
 };
 
-class WifiStationsWindow : public Window {
+class SetWifiStationWindow : public Window {
 public:
 	void print(LcdManager* lcd, DisplayManager* display, SystemManager* system);
 	void setString(char* string, uint8_t size);
@@ -293,9 +293,8 @@ private:
 	uint8_t cursor = 0;
 	uint8_t stations_count = 0;
 
-	char* string;
-	uint8_t size;
-
+	char* config_string;
+	uint8_t string_size;
 };
 
 class KeyboardWindow : public Window {
@@ -312,6 +311,6 @@ private:
 	uint8_t key_cursor = 0;
 	uint8_t string_size_now = 0;
 
-	char* string;
-	uint8_t size;
+	char* config_string;
+	uint8_t string_size;
 };

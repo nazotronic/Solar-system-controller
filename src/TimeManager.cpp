@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0 beta
- * Date: 14.01.2025
+ * Version: 1.3.0
+ * Date: 25.01.2025
  */
 
 #include "data.h"
@@ -46,15 +46,10 @@ void TimeManager::writeSettings(char* buffer) {
 void TimeManager::readSettings(char* buffer) {
 	getParameter(buffer, "STns", &ntp_flag);
 	getParameter(buffer, "STg", &gmt);
-}
 
-#ifdef TIME_MANAGER_BLYNK_SUPPORT
-void TimeManager::addBlynkElements(DynamicArray<blynk_element_t>* array) {
-	array->add(blynk_element_t("P ntp sync", "STns", &ntp_flag, BLYNK_TYPE_BOOL));
-	array->add(blynk_element_t("P gmt", "STg", &gmt, BLYNK_TYPE_INT8_T));
+	setNtpFlag(ntp_flag);
+	setGmt(gmt);
 }
-#endif
-
 
 uint8_t TimeManager::status() {
 	return clk.status();

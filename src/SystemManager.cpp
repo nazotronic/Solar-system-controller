@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0 beta
- * Date: 14.01.2025
+ * Version: 1.3.0
+ * Date: 25.01.2025
  */
 
 #include "data.h"
@@ -15,9 +15,9 @@ SystemManager::SystemManager() {
 
 void SystemManager::begin() {
 	Serial.begin(9600);
-	
+
 	time.setSystemManager(this);
-	moduls.setSystemManager(this);
+	sensors.setSystemManager(this);
 	solar.setSystemManager(this);
 	display.setSystemManager(this);
 	network.setSystemManager(this);
@@ -25,7 +25,7 @@ void SystemManager::begin() {
 
 	LittleFS.begin();
 	time.begin();
-	moduls.begin();
+	sensors.begin();
 	solar.begin();
 	display.begin();
 	network.begin();  
@@ -39,6 +39,7 @@ void SystemManager::begin() {
 	attachInterrupt(SW_PORT, encoderSwInterrupt, CHANGE);
 	
 	readSettings();
+	network.endBegin();
 }
 
 
@@ -55,7 +56,7 @@ void SystemManager::tick() {
 	}
 
 	time.tick();
-	moduls.tick();
+	sensors.tick();
 	solar.tick();
 	display.tick();
 	network.tick();
@@ -82,62 +83,95 @@ void SystemManager::resetAll() {
 }
 
 
-void SystemManager::makeBlynkElementsList(DynamicArray<blynk_element_t>* array) {
+void SystemManager::makeBlynkElementCodesList(DynamicArray<String>* array) {
 	if (array == NULL) {
 		return;
 	}
-
 	array->clear();
-	addBlynkElements(array);
 	
 #ifdef TIME_MANAGER_BLYNK_SUPPORT
-	time.addBlynkElements(array);
+	time.addBlynkElementCodes(array);
 #endif
 
 #ifdef MODULE_MANAGER_BLYNK_SUPPORT
-	moduls.addBlynkElements(array);
+	sensors.addBlynkElementCodes(array);
 #endif
 
 #ifdef SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
-	solar.addBlynkElements(array);
+	solar.addBlynkElementCodes(array);
 #endif
 
 #ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
-	display.addBlynkElements(array);
+	display.addBlynkElementCodes(array);
 #endif
 
 #ifdef NETWORK_MANAGER_BLYNK_SUPPORT
-	network.addBlynkElements(array);
+	network.addBlynkElementCodes(array);
 #endif
 }
 
-int8_t SystemManager::scanBlynkElemetIndex(DynamicArray<blynk_element_t>* array, blynk_element_t* element) {
-	if (array == NULL || element == NULL) {
-		return -1;
+void SystemManager::makeBlynkElementSend(BlynkWifi* Blynk, blynk_link_t* link) {
+	if (Blynk == NULL || link == NULL) {
+		return;
 	}
 
-	for (uint8_t i = 0; i < array->getSize();i++) {
-		if (!strcmp((*array)[i].code, element->code)) {
-			return i;
-		}
-	}
+#ifdef TIME_MANAGER_BLYNK_SUPPORT
+	if (time.blynkElementSend(Blynk, link)) return;
+#endif
 
-	return -1;
+#ifdef MODULE_MANAGER_BLYNK_SUPPORT
+	if (sensors.blynkElementSend(Blynk, link)) return;
+#endif
+
+#ifdef SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
+	if (solar.blynkElementSend(Blynk, link)) return;
+#endif
+
+#ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
+	if (display.blynkElementSend(Blynk, link)) return;
+#endif
+
+#ifdef NETWORK_MANAGER_BLYNK_SUPPORT
+	if (network.blynkElementSend(Blynk, link)) return;
+#endif
 }
 
-int8_t SystemManager::scanBlynkElemetIndex(DynamicArray<blynk_element_t>* array, String element_code) {
+void SystemManager::makeBlynkElementParse(String element_code, const BlynkParam& param) {
+#ifdef TIME_MANAGER_BLYNK_SUPPORT
+	if (time.blynkElementParse(element_code, param)) return;
+#endif
+
+#ifdef MODULE_MANAGER_BLYNK_SUPPORT
+	if (sensors.blynkElementParse(element_code, param)) return;
+#endif
+
+#ifdef SOLAR_SYSTEM_MANAGER_BLYNK_SUPPORT
+	if (solar.blynkElementParse(element_code, param)) return;
+#endif
+
+#ifdef DISPLAY_MANAGER_BLYNK_SUPPORT
+	if (display.blynkElementParse(element_code, param)) return;
+#endif
+
+#ifdef NETWORK_MANAGER_BLYNK_SUPPORT
+	if (network.blynkElementParse(element_code, param)) return;
+#endif
+}
+
+int8_t SystemManager::scanBlynkElemetCodeIndex(DynamicArray<String>* array, String element_code) {
 	if (array == NULL) {
 		return -1;
 	}
 
-	for (uint8_t i = 0; i < array->getSize();i++) {
-		if (!strcmp((*array)[i].code, element_code.c_str())) {
+	for (uint8_t i = 0; i < array->size();i++) {
+		if (!strcmp((*array)[i].c_str(), element_code.c_str()) ) {
 			return i;
 		}
 	}
 
 	return -1;
 }
+
 
 bool SystemManager::deleteBlynkLink(String element_code) {
 	return blynk.deleteLink(element_code);
@@ -187,8 +221,8 @@ TimeManager* SystemManager::getTimeManager() {
 	return &time;
 }
 
-ModuleManager* SystemManager::getModuleManager() {
-	return &moduls;
+SensorsManager* SystemManager::getSensorsManager() {
+	return &sensors;
 }
 
 SolarSystemManager* SystemManager::getSolarSystemManager() {
@@ -212,14 +246,6 @@ Encoder* SystemManager::getEncoder() {
 }
 
 
-void SystemManager::addBlynkElements(DynamicArray<blynk_element_t>* array) {
-	if (array == NULL) {
-		return;
-	}
-
-	array->add(blynk_element_t("P buzzer", "SSb", &buzzer_flag, BLYNK_TYPE_BOOL));
-}
-
 void SystemManager::saveSettings(bool ignore_flag) {
 	if (!ignore_flag) {
 		if (!save_settings_request) {
@@ -238,7 +264,7 @@ void SystemManager::saveSettings(bool ignore_flag) {
 	setParameter(buffer, "SSb", getBuzzerFlag());
 
 	time.writeSettings(buffer);
-	moduls.writeSettings(buffer);
+	sensors.writeSettings(buffer);
 	solar.writeSettings(buffer);
 	display.writeSettings(buffer);
 	network.writeSettings(buffer);
@@ -266,9 +292,10 @@ void SystemManager::readSettings() {
 	buffer[file_size] = 0;
 	
 	getParameter(buffer, "SSb", &buzzer_flag);
+	setBuzzerFlag(buzzer_flag);
 
 	time.readSettings(buffer);
-	moduls.readSettings(buffer);
+	sensors.readSettings(buffer);
 	solar.readSettings(buffer);
 	display.readSettings(buffer);
 	network.readSettings(buffer);
