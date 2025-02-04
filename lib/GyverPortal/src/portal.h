@@ -3,7 +3,6 @@
 // GP Portal
 
 #ifdef ESP8266
-#include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 extern ESP8266WebServer *_gp_s;
 #else
@@ -25,6 +24,7 @@ extern WebServer *_gp_s;
 extern int _gp_bufsize;
 extern String* _GPP;
 extern String* _gp_uri;
+extern bool _reqBlock; // Author: Vereshchynskyi Nazar
 extern uint32_t _gp_unix_tmr;
 extern uint32_t _gp_local_unix;
 extern const char* _gp_style;
@@ -221,7 +221,27 @@ public:
 
             if (_action) _action();                 // вызов обычного обработчика действий
             else if (_actionR) _actionR(*this);     // вызов обработчика действий с объектом
-            if (_showPage) show();                  // показать страницу
+            if (_showPage) {
+                if (_reqBlockTmr) { // Author: Vereshchynskyi Nazar
+                    if (!_reqStoppedFlag) {
+                        _reqStoppedFlag = true;
+
+                        this->stop();
+                        this->start();
+
+                        return;
+                    }
+                    
+                    if (millis() - _reqBlockTmr >= 1000) {
+                        _reqBlock = false;
+                        _reqBlockTmr = 0;
+                        _reqStoppedFlag = false;
+                    }
+                }
+                else {
+                    show();                  // показать страницу
+                }
+            }
             
             _argValPtr = nullptr;
             _argNamePtr = nullptr;
@@ -644,6 +664,10 @@ public:
             
             server.sendContent("");
             server.client().stop();
+
+            if (_reqBlock) {
+                _reqBlockTmr = millis();
+            }
         }
     }
     
@@ -767,6 +791,9 @@ private:
     bool _formF = 0, _clickF = 0, _reqF = 0, _delF = 0, _renF = 0;
     bool _fileDF = 0, _uplEF = 0, _uplF = 0, _abortF = 0, _autoD = 1, _autoU = 1, _autoDel = 1, _autoRen = 1;
     bool downOn = 1, uplOn = 1;
+
+    uint32_t _reqBlockTmr = 0;
+    bool _reqStoppedFlag = false;
 
     uint32_t _onlTmr = 0;
     uint16_t _onlPrd = 1500;

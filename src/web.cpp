@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0
- * Date: 25.01.2025
+ * Version: 1.3.1
+ * Date: 04.02.2025
  */
 
 #include "data.h"
@@ -36,44 +36,45 @@ void NetworkManager::uiBuild() {
 	DisplayManager* display = system->getDisplayManager();
 	NetworkManager* network = system->getNetworkManager();
 	BlynkManager* blynk = system->getBlynkManager();
+	String update_codes = web_update_codes;
 	
 	for (byte i = 0;i < sensors->getDS18B20Count();i++) {
-		web_update_codes += "HSdsn";
-		web_update_codes += i;
-		web_update_codes += ",";
-		web_update_codes += "HSdst";
-		web_update_codes += i;
-		web_update_codes += ",";
+		update_codes += "HSdsn";
+		update_codes += i;
+		update_codes += ",";
+		update_codes += "HSdst";
+		update_codes += i;
+		update_codes += ",";
 
-		web_update_codes += "SSDSn";
-		web_update_codes += i;
-		web_update_codes += ",";
-		web_update_codes += "SSDSa";
-		web_update_codes += i;
-		web_update_codes += ",";
-		web_update_codes += "SSDSr";
-		web_update_codes += i;
-		web_update_codes += ",";
-		web_update_codes += "SSDSc";
-		web_update_codes += i;
-		web_update_codes += ",";
+		update_codes += "SSDSn";
+		update_codes += i;
+		update_codes += ",";
+		update_codes += "SSDSa";
+		update_codes += i;
+		update_codes += ",";
+		update_codes += "SSDSr";
+		update_codes += i;
+		update_codes += ",";
+		update_codes += "SSDSc";
+		update_codes += i;
+		update_codes += ",";
 	}
 
 	for (uint8_t i = 0;i < blynk->getLinksCount();i++) {
-		web_update_codes += "SBLp";
-		web_update_codes += i;
-		web_update_codes += ",";
-		web_update_codes += "SBLe";
-		web_update_codes += i;
+		update_codes += "SBLp";
+		update_codes += i;
+		update_codes += ",";
+		update_codes += "SBLe";
+		update_codes += i;
 
 		if (i != blynk->getLinksCount() - 1) {
-			web_update_codes += ",";
+			update_codes += ",";
 		}
 	}
 
 	GP.BUILD_BEGIN(550);
 	GP.THEME(GP_DARK);
-	GP.UPDATE(web_update_codes, SEC_TO_MLS(WEB_UPDATE_TIME));
+	GP.UPDATE(update_codes, SEC_TO_MLS(WEB_UPDATE_TIME));
 	
 	GP.TITLE("nazotronic");
 	GP.NAV_TABS_LINKS("/,/settings,/memory", "Home,Settings,Memory", GP_ORANGE);
@@ -81,7 +82,7 @@ void NetworkManager::uiBuild() {
 
 	if (ui.uri("/")) {
 		M_SPOILER("Info", GP_ORANGE,
-			GP.SYSTEM_INFO("1.3.0");
+			GP.SYSTEM_INFO("1.3.1");
 		);
 		
 		M_BLOCK(GP_THIN,
@@ -165,8 +166,8 @@ void NetworkManager::uiBuild() {
 		GP.HR();
 		GP.SPAN("Solar Battery Control System", GP_LEFT);
 		GP.SPAN("Author: Vereshchynskyi Nazar", GP_LEFT);
-		GP.SPAN("Version: 1.3.0", GP_LEFT);
-		GP.SPAN("Date: 25.01.2025", GP_LEFT);
+		GP.SPAN("Version: 1.3.1", GP_LEFT);
+		GP.SPAN("Date: 04.02.2025", GP_LEFT);
 	}
 
 	if (ui.uri("/settings")) {
@@ -394,40 +395,50 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("HSt")) {
 		ui.answer(!sensors->getAM2320Status() ? String(sensors->getAM2320T(), 1) + "°" : String("err"));
+		return;
 	}
 	if (ui.update("HSh")) {
 		ui.answer(!sensors->getAM2320Status() ? String(sensors->getAM2320H(), 1) + "%" : String("err"));
+		return;
 	}
 	
 	for (byte i = 0;i < sensors->getDS18B20Count();i++) {
 		if (ui.update(String("HSdsn") + i)) {
 			ui.answer(sensors->getDS18B20Name(i));
+
+			return;
 		}
 		if (ui.update(String("HSdst") + i)) {
 			ui.answer(!sensors->getDS18B20Status(i) ? String(sensors->getDS18B20T(i), 1) + "°" : String("err"));
+			return;
 		}
 	}
 
 	if (ui.update("HSSbat")) {
 		ui.answer(!solar->getBatterySensorStatus() ? String(solar->getBatteryT(), 1) + "°" : String("err"));
+		return;
 	}
 	if (ui.update("HSSboi")) {
 		ui.answer(!solar->getBoilerSensorStatus() ? String(solar->getBoilerT(), 1) + "°" : String("err"));
+		return;
 	}
 	if (ui.update("HSSext")) {
 		ui.answer(!solar->getExitSensorStatus() ? String(solar->getExitT(), 1) + "°" : String("err"));
+		return;
 	}
 	if (ui.update("HSSpu")) {
 		ui.answer(solar->getReleFlag());
+		return;
 	}
 
 	// parse
 	if (ui.click("HSSpu")) {
 		bool state = ui.getBool();
 		solar->setReleFlag(state);
+		
+		return;
 	}
 	/* --- Home --- */
-
 
 	if (ui.clickSub("S") || ui.formSub("/S")) {
 		system->saveSettingsRequest();
@@ -437,22 +448,27 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("SNm")) {
 		ui.answer(network->getMode());
+		return;
 	}
 
 	if (ui.update("SNWs")) {
 		ui.answer(network->getWifiSsid());
+		return;
 	}
 
 	if (ui.update("SNAs")) {
 		ui.answer(network->getApSsid());
+		return;
 	}
 	if (ui.update("SNAp")) {
 		ui.answer(network->getApPass());
+		return;
 	}
 
 	// parse
 	if (ui.click("SNm")) {
 		network->setMode(ui.getInt());
+		return;
 	}
 
 	if (ui.form("/SNW")) {
@@ -463,15 +479,20 @@ void NetworkManager::uiAction() {
 		ui.copyStr("SNWp", read_pass, NETWORK_SSID_PASS_SIZE);
 
 		network->setWifi(read_ssid, read_pass);
+		return;
 	}
 
 	if (ui.click("SNAs")) {
 		String read_string(ui.getString());
 		network->setAp(&read_string, NULL);
+		
+		return;
 	}
 	if (ui.click("SNAp")) {
 		String read_string(ui.getString());
 		network->setAp(NULL, &read_string);
+		
+		return;
 	}
 	/* --- NetworkManager --- */
 
@@ -479,47 +500,60 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("SBs")) {
 		ui.answer(blynk->getWorkFlag());
+		return;
 	}
 	if (ui.update("SBsdt")) {
 		ui.answer(blynk->getSendDataTime());
+		return;
 	}
 	if (ui.update("SBa")) {
 		ui.answer(blynk->getAuth());
+		return;
 	}
 
 	for (uint8_t i = 0;i < blynk->getLinksCount();i++) {
 		if (ui.update(String("SBLp") + i)) {
 			ui.answer(blynk->getLinkPort(i));
+
+			return;
 		}
 		if (ui.update(String("SBLe") + i)) {
 			char* link_element_code = blynk->getLinkElementCode(i);
 			uint8_t index = system->scanBlynkElemetCodeIndex(&web_blynk.element_codes, link_element_code);
 		
 			ui.answer(index);
+			return;
 		}
 	}
 
 	// parse
 	if (ui.click("SBs")) {
 		blynk->setWorkFlag(ui.getBool());
+		return;
 	}
 	if (ui.click("SBsdt")) {
 		blynk->setSendDataTime(ui.getInt());
+		return;
 	}
 	if (ui.click("SBa")) {
 		blynk->setAuth(ui.getString());
+		return;
 	}
 
 	if (ui.click("SBLs")) {
 		updateWebBlynkBlock();
+		return;
 	}
 	if (ui.click("SBLnl")) {
 		blynk->addLink();
+		return;
 	}
 	
 	for (uint8_t i = 0;i < blynk->getLinksCount();i++) {
 		if (ui.click(String("SBLp") + i)) {
 			blynk->setLinkPort(i, ui.getInt());
+			
+			return;
 		}
 		if (ui.click(String("SBLe") + i)) {
 			uint8_t index = ui.getInt();
@@ -527,9 +561,12 @@ void NetworkManager::uiAction() {
 			if (index < web_blynk.element_codes.size()) {
 				blynk->setLinkElementCode(i, web_blynk.element_codes[index]);
 			}
+			
+			return;
 		}
 		if (ui.click(String("SBLd") + i)) {
 			blynk->deleteLink(i);
+			return;
 		}
 	}
 	/* --- BlynkManager --- */
@@ -538,26 +575,34 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("STns")) {
 		ui.answer(time->getNtpFlag());
+		return;
 	}
 	if (ui.update("STg")) {
 		ui.answer(time->getGmt());
+		return;
 	}
 
 	// parse
 	if (ui.click("STns")) {
 		time->setNtpFlag(ui.getBool());
+		return;
 	}
 	if (ui.click("STg")) {
 		time->setGmt(constrain(ui.getInt(), -12, 12));
+		return;
 	}
 
 	if (ui.click("STt")) {
 		GPtime get_time = ui.getTime();
 		time->setTime(get_time.hour, get_time.minute, get_time.second, time->day(), time->month(), time->year());
+		
+		return;
 	}
 	if (ui.click("STd")) {
 		GPdate get_date = ui.getDate();
 		time->setTime(time->hour(), time->minute(), time->second(), get_date.day, get_date.month, get_date.year);
+		
+		return;
 	}
 	/* --- TimeManager --- */
 
@@ -565,11 +610,14 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("SSrdt")) {
 		ui.answer(sensors->getReadDataTime());
+		return;
 	}
 
 	for (byte i = 0;i < sensors->getDS18B20Count();i++) {
 		if (ui.update(String("SSDSn") + i)) {
 			ui.answer(sensors->getDS18B20Name(i));
+
+			return;
 		}
 
 		if (ui.update(String("SSDSa") + i)) {
@@ -577,14 +625,17 @@ void NetworkManager::uiAction() {
 			uint8_t index = sensors->scanDS18B20AddressIndex(&web_sensors.ds18b20_addresses, ds18b20_address);
 											
 			ui.answer(index);
+			return;
 		}
 
 		if (ui.update(String("SSDSr") + i)) {
 			ui.answer(sensors->getDS18B20Resolution(i));
+			return;
 		}
 
 		if (ui.update(String("SSDSc") + i)) {
 			ui.answer(sensors->getDS18B20Correction(i), 1);
+			return;
 		}
 
 	}
@@ -592,17 +643,22 @@ void NetworkManager::uiAction() {
 	// parse
 	if (ui.click("SSrdt")) {
 		sensors->setReadDataTime(ui.getInt());
+		return;
 	}
 	if (ui.click("SSDSs")) {
 		updateWebSensorsBlock();
+		return;
 	}
 	if (ui.click("SSDSnd")) {
 		sensors->addDS18B20();
+		return;
 	}
 
 	for (byte i = 0;i < sensors->getDS18B20Count();i++) {
 		if (ui.click(String("SSDSn") + i)) {
 			sensors->setDS18B20Name(i, ui.getString());
+
+			return;
 		}
 
 		if (ui.click(String("SSDSa") + i)) {
@@ -611,18 +667,23 @@ void NetworkManager::uiAction() {
 			if (index < web_sensors.ds18b20_addresses.size()) {
 				sensors->setDS18B20Address(i, web_sensors.ds18b20_addresses[index]);
 			}
+			
+			return;
 		}
 
 		if (ui.click(String("SSDSr") + i)) {
 			sensors->setDS18B20Resolution(i, ui.getInt());
+			return;
 		}
 
 		if (ui.click(String("SSDSc") + i)) {
 			sensors->setDS18B20Correction(i, ui.getFloat());
+			return;
 		}
 
 		if (ui.click(String("SSDSd") + i)) {
 			sensors->deleteDS18B20(i);
+			return;
 		}
 	}
 	/* --- SensorsManager --- */
@@ -631,23 +692,29 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("SDar")) {
 		ui.answer(display->getAutoResetFlag());
+		return;
 	}
 	if (ui.update("SDbot")) {
 		ui.answer(display->getBacklightOffTime());
+		return;
 	}
 	if (ui.update("SDf")) {
 		ui.answer(display->getFps());
+		return;
 	}
 
 	// parse
 	if (ui.click("SDar")) {
 		display->setAutoResetFlag(ui.getBool());
+		return;
 	}
 	if (ui.click("SDbot")) {
 		display->setBacklightOffTime(ui.getInt());
+		return;
 	}
 	if (ui.click("SDf")) {
 		display->setFps(ui.getInt());
+		return;
 	}
 	/* --- DisplayManager --- */
 
@@ -655,51 +722,65 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("SSSs")) {
 		ui.answer(solar->getWorkFlag());
+		return;
 	}
 	if (ui.update("SSSeo")) {
 		ui.answer(solar->getErrorOnFlag());
+		return;
 	}
 	if (ui.update("SSSri")) {
 		ui.answer(solar->getReleInvertFlag());
+		return;
 	}
 
 	if (ui.update("SSSd")) {
 		ui.answer(solar->getDelta());
+		return;
 	}
 
 	if (ui.update("SSSba")) {
 		ui.answer(solar->getBatterySensor() + 1);
+		return;
 	}
 	if (ui.update("SSSbo")) {
 		ui.answer(solar->getBoilerSensor() + 1);
+		return;
 	}
 	if (ui.update("SSSex")) {
 		ui.answer(solar->getExitSensor() + 1);
+		return;
 	}
 
 	// parse
 	if (ui.click("SSSs")) {
 		solar->setWorkFlag(ui.getBool());
+		return;
 	}
 	if (ui.click("SSSeo")) {
 		solar->setErrorOnFlag(ui.getBool());
+		return;
 	}
 	if (ui.click("SSSri")) {
 		solar->setReleInvertFlag(ui.getBool());
+		return;
 	}
 
 	if (ui.click("SSSd")) {
 		solar->setDelta(ui.getInt());
+		return;
 	}
 	
 	if (ui.click("SSSba")) {
 		solar->setBatterySensor(ui.getInt() - 1);
+		return;
 	}
 	if (ui.click("SSSbo")) {
 		solar->setBoilerSensor(ui.getInt() - 1);
+		return;
 	}
 	if (ui.click("SSSex")) {
 		solar->setExitSensor(ui.getInt() - 1);
+		return;
 	}
 	/* --- SolarSystemManager --- */
 
@@ -707,11 +788,13 @@ void NetworkManager::uiAction() {
 	// update
 	if (ui.update("SSb")) {
 		ui.answer(system->getBuzzerFlag());
+		return;
 	}
 
 	// parse
 	if (ui.click("SSb")) {
 		system->setBuzzerFlag(ui.getBool());
+		return;
 	}	
 
 	if (ui.click("SSMr")) {

@@ -8,6 +8,7 @@ WebServer* _gp_s;
 
 String* _GPP;
 String* _gp_uri;
+bool _reqBlock = false; // Author: Vereshchynskyi Nazar
 int _gp_bufsize;
 uint32_t _gp_unix_tmr = 0;
 uint32_t _gp_local_unix = 0;

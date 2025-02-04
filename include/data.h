@@ -3,8 +3,8 @@
  *
  * Author: Vereshchynskyi Nazar
  * Email: verechnazar12@gmail.com
- * Version: 1.3.0
- * Date: 25.01.2025
+ * Version: 1.3.1
+ * Date: 04.02.2025
  * 
  * Features:
  * 1. Supports reading up to 10 ds18b20 temperature sensors with calibration capability.

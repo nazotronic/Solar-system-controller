@@ -22,6 +22,7 @@ extern WebServer* _gp_s;
 extern int _gp_bufsize;
 extern String* _gp_uri;
 extern String* _GPP;
+extern bool _reqBlock; // Author: Vereshchynskyi Nazar
 extern uint32_t _gp_unix_tmr;
 extern uint32_t _gp_local_unix;
 extern const char* _gp_style;
@@ -99,8 +100,18 @@ struct Builder {
     }
     
     void send(bool force = 0) {
+        if (_reqBlock) { // Author: Vereshchynskyi Nazar
+            *_GPP = "";
+            return;
+        }
         if ((int)_GPP->length() > (force ? 0 : _gp_bufsize)) {
+            uint32_t timer = millis();
             _gp_s->sendContent(*_GPP);
+
+            if (millis() - timer >= 800) { // Author: Vereshchynskyi Nazar
+                _reqBlock = true;
+            }
+
             *_GPP = "";
         }
     }

@@ -58,7 +58,7 @@
 #include "builder.h"
 #include "canvas.h"
 #include "buildMacro.h"
-#include "release.h"
+#include "GPversion.h"
 
 #ifndef GP_NO_OTA
 #include "CustomOTA.h"
