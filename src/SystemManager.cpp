@@ -31,8 +31,9 @@ void SystemManager::begin() {
 	network.begin();  
 
 	pinMode(BUZZER_PORT, OUTPUT);
-	pinMode(SW_PORT, INPUT_PULLUP);
-	enc.setType(TYPE2);
+	enc.setEncPortMode(ENC_PORT_INPUT_PULLUP);
+	enc.setButPortMode(BUTTON_PORT_INPUT_PULLUP);
+	enc.setButInvert(true);
 
 	attachInterrupt(CLK_PORT, encoderClkInterrupt, CHANGE);
 	attachInterrupt(DT_PORT, encoderDtInterrupt, CHANGE);
@@ -47,11 +48,17 @@ void SystemManager::tick() {
 	// uint32_t tick = millis();
 
   	yield();
-	enc.tick();
+	// if (enc.isLeft()) {
+	// 	Serial.println(String(millis()) + " left");
+	// }
+	// if (enc.isRight()) {
+	// 	Serial.println(String(millis()) + " right");
+	// }
 	
-	if (enc.isTurn() || enc.isPress()) {
+	if (enc.isTurn() || enc.isPressed()) {
 		if (display.action()) {
-			enc.resetStates();
+			enc.deleteTurns();
+			enc.clearButFlags();
 		}
 	}
 

@@ -28,8 +28,12 @@ void MainWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 	}
 
 	if (enc->isLeft(true) || enc->isRight(true)) {
-		lcd->clear();
-		windowCursorTick(cursor, enc->isLeft() ? -1 : 1, 5);
+		if ((enc->isRight(true) && cursor != 5) ||
+		   (enc->isLeft(true) && cursor)) {
+			lcd->clear();
+		}
+
+		windowCursorTick(cursor, enc->getTurn() ? 1 : -1, 5);
 		
 		enc->isRight();
 	}
@@ -70,6 +74,9 @@ void MainWindow::print(LcdManager* lcd, DisplayManager* display, SystemManager* 
 			break;
 		}
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 void MainWindow::printHome(LcdManager* lcd, SystemManager* system) {
@@ -461,6 +468,9 @@ void DS18B20Window::print(LcdManager* lcd, DisplayManager* display, SystemManage
 		lcd->clear();
 		display->deleteWindowFromStack(this);
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 
@@ -518,6 +528,9 @@ void SettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemManag
 		system->saveSettingsRequest();
 		display->deleteWindowFromStack(this);
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 
@@ -620,6 +633,9 @@ void NetworkSettingsWindow::print(LcdManager* lcd, DisplayManager* display, Syst
 
 		display->deleteWindowFromStack(this);
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 
@@ -714,6 +730,9 @@ void WifiSettingsWindow::print(LcdManager* lcd, DisplayManager* display, SystemM
 
 		display->deleteWindowFromStack(this);
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 
@@ -1558,6 +1577,9 @@ void SetDS18B20AddressWindow::print(LcdManager* lcd, DisplayManager* display, Sy
 	if (enc->isHolded()) {
 		scan_flag = true;
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 void SetDS18B20AddressWindow::setArray(uint8_t* array) {
@@ -1619,6 +1641,9 @@ void SetWifiStationWindow::print(LcdManager* lcd, DisplayManager* display, Syste
 	if (enc->isHolded()) {
 		scan_flag = true;
 	}
+
+	enc->isLeftH(); // empty handler
+	enc->isRightH(); // empty handler
 }
 
 void SetWifiStationWindow::setString(char* string, uint8_t size) {

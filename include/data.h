@@ -24,7 +24,7 @@
 #include <settings.h>
 #include <DynamicArray.h>
 #include <LittleFS.h>
-#include <GyverEncoder.h>
+#include <Encoder.h>
 #include <LiquidCrystal_I2C.h> 
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
